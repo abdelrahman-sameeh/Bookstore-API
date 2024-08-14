@@ -6,7 +6,3 @@
 -- order book (Stripe)
 -- delivery if book status is offline 
 -- chat between user and owner
- 
- 
- 
-  
