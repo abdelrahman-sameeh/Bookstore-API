@@ -17,11 +17,23 @@ exports.addToCartValidator = [
   check("count")
     .optional()
     .isInt({ min: 1 })
-    .withMessage("count must be a positive integer and min value must be equal 1"),
+    .withMessage(
+      "count must be a positive integer and min value must be equal 1"
+    ),
+  validatorMiddleware,
+];
+
+exports.deleteCartValidator = [
+  check("cartId")
+    .isMongoId()
+    .withMessage("invalid cartId"),
   validatorMiddleware,
 ];
 
 exports.deleteBookFromCartValidator = [
+  check("cartId")
+    .isMongoId()
+    .withMessage("invalid cartId"),
   check("id")
     .notEmpty()
     .withMessage("book id is required")
@@ -30,6 +42,8 @@ exports.deleteBookFromCartValidator = [
   check("count")
     .optional()
     .isInt({ min: 1 })
-    .withMessage("count must be a positive integer and min value must be equal 1"),
+    .withMessage(
+      "count must be a positive integer and min value must be equal 1"
+    ),
   validatorMiddleware,
 ];

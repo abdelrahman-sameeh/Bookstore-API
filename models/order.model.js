@@ -7,11 +7,21 @@ const orderSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
-    cart: {
-      type: mongoose.Types.ObjectId,
-      ref: "Cart",
-      required: true,
-    },
+    books: [
+      {
+        book: {
+          type: mongoose.Types.ObjectId,
+          ref: "Book",
+          required: true,
+        },
+        count: {
+          type: Number,
+          required: true,
+          min: 1,
+          default: 1,
+        },
+      },
+    ],
     totalItems: {
       type: Number,
       required: true,
@@ -34,9 +44,20 @@ const orderSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["pending", "in_delivery", "completed", "cancelled"],
+      enum: ["pending", "inProgress", "inDelivery", "completed", "cancelled"],
       default: "pending",
     },
+    paymentType: {
+      type: String,
+      enum: ["online", "offline"],
+      required: true,
+    },
+    paymentStatus: {
+      type: String,
+      enum: ["unpaid", "paid"],
+      default: "unpaid",
+    },
+    paymentIntentId: String,
   },
   { timestamps: true }
 );
