@@ -1,10 +1,15 @@
 const express = require("express");
-const { createOrderValidator } = require("../validators/order.validator");
-const { isAuth } = require("../controllers/auth.controllers");
-const { createOrder } = require("../controllers/order.controllers");
+const { isAuth, allowTo } = require("../controllers/auth.controllers");
+const { makeOrderInDelivery } = require("../controllers/order.controllers");
+const { updateOrderStatusValidator } = require("../validators/order.validator");
 const router = express.Router();
 
-// Endpoint to create an order
-router.post("/order", isAuth, createOrderValidator, createOrder);
+router.put(
+  "/updateOrderStatus/:id",
+  isAuth,
+  // allowTo("admin"),
+  updateOrderStatusValidator,
+  makeOrderInDelivery
+);
 
 module.exports = router;

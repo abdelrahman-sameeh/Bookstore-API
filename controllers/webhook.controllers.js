@@ -1,8 +1,10 @@
+const Book = require("../models/book.model");
 const Cart = require("../models/cart.model");
 const Order = require("../models/order.model");
-const PendingTransfer = require("../models/pending_transfer.model");
+const Transfer = require("../models/transfer.model");
 const { User } = require("../models/user.model");
 const calculateStripeFee = require("../utils/stripeFee");
+const { createOrderAndUpdateCart } = require("./order.controllers");
 
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -47,90 +49,109 @@ async function handleAccountUpdated(account) {
   }
 }
 
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const retrieveChargeWithRetry = async (
+  paymentIntentId,
+  retries = 10,
+  delay = 1000
+) => {
+  let charge;
+  for (let i = 0; i < retries; i++) {
+    const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+    charge = await stripe.charges.retrieve(paymentIntent.latest_charge);
+    if (charge.balance_transaction) {
+      return charge; // Return if balance_transaction is found
+    }
+    await wait(delay); // Wait before retrying
+  }
+  throw new Error("Balance Transaction ID is missing after retries.");
+};
+
 const handleCheckoutSucceeded = async (session) => {
-  const paymentIntentId = session.payment_intent;
-  const metadata = session.metadata;
+  try {
+    const paymentIntentId = session.payment_intent;
 
-  const owner = await User.findById(metadata.ownerId);
-  const ownerFee = Math.floor(
-    metadata.finalPrice * 0.9 - calculateStripeFee(metadata.finalPrice)
-  ); // (90% - Stripe fees) to Owner
+    if (!paymentIntentId) {
+      throw new Error("Payment Intent ID is missing.");
+    }
 
-  // Check if funds are available
-  const balance = await stripe.balance.retrieve();
-  const availableBalance = balance.available.find(
-    (b) => b.currency === "usd"
-  ).amount;
+    // Retry retrieving the charge to get the balance transaction ID
+    const charge = await retrieveChargeWithRetry(paymentIntentId);
+    const balanceTransactionId = charge.balance_transaction;
 
-  if (availableBalance >= ownerFee) {
-    // Transfer funds to Owner
-    await stripe.transfers.create({
-      amount: ownerFee,
-      currency: "usd",
-      destination: owner.stripeAccountId,
-      transfer_group: paymentIntentId,
-    });
-  } else {
-    // Store the transfer for later
-    await PendingTransfer.create({
+    const metadata = session.metadata;
+
+    const cart = await Cart.findById(session.metadata.cartId).populate(
+      "books.book"
+    );
+    if (!cart) {
+      throw new Error("cart not found");
+    }
+
+    const hasOfflineBook = cart.books.some(
+      (item) => item.book.status === "offline"
+    );
+
+    const orderData = {
+      user: metadata.userId,
+      books: cart.books,
+      totalItems: cart.totalItems,
+      totalPrice: cart.totalPrice,
+      paymentType: "online",
+      paymentStatus: "paid",
+      finalPrice: metadata.finalPrice,
+      status: hasOfflineBook ? "inProgress" : "completed",
+    };
+
+    if (metadata.couponId) {
+      orderData.coupon = metadata.couponId;
+      orderData.discount = metadata.discount;
+    }
+
+    const order = await createOrderAndUpdateCart(orderData, metadata.userId, cart)
+
+    // Create the transfer
+    await Transfer.create({
       paymentIntentId,
+      balanceTransactionId,
       ownerId: metadata.ownerId,
       amount: metadata.finalPrice,
       status: "pending",
+      order: order._id,
+      hasOfflineBook,
     });
+  } catch (error) {
+    console.error("Error in handleCheckoutSucceeded:", error.message);
+    // Handle the error, e.g., log it, notify an admin, etc.
   }
-
-  const cart = await Cart.findById(session.metadata.cartId).populate(
-    "books.book"
-  );
-
-  const orderData = {
-    user: metadata.userId,
-    books: cart.books,
-    totalItems: cart.totalItems,
-    totalPrice: cart.totalPrice,
-    paymentType: "online",
-    paymentStatus: "paid",
-    finalPrice: metadata.finalPrice / 100, // Convert from cents
-    status: "completed",
-  };
-
-  if (metadata.couponId) {
-    orderData.coupon = metadata.couponId;
-    orderData.discount = metadata.discount;
-  }
-  
-  await Order.create(orderData);
-
-  const user = await User.findById(metadata.userId);
-  cart.books.map((item) => {
-    if (item.book.status == "online") {
-      user.onlineBooks.push(item.book._id);
-    }
-  });
-  await user.save();
-
-  // Clear cart after order
-  // await Cart.deleteOne({ _id: metadata.cartId });
 };
 
 const handleBalanceAvailable = async () => {
-  const pendingTransfers = await PendingTransfer.find({ status: "pending" });
+  const transfers = await Transfer.find({
+    status: "pending",
+    hasOfflineBook: false,
+  }).sort({ createdAt: 1 });
 
-  for (const transfer of pendingTransfers) {
+  for (const transfer of transfers) {
+    const balanceTransaction = await stripe.balanceTransactions.retrieve(
+      transfer.balanceTransactionId
+    );
+
     const owner = await User.findById(transfer.ownerId);
     const ownerFee = Math.floor(
       transfer.amount * 0.9 - calculateStripeFee(transfer.amount)
-    ); // (90% - Stripe fees) to Owner
+    );
 
-    // Check if funds are available
     const balance = await stripe.balance.retrieve();
     const availableBalance = balance.available.find(
       (b) => b.currency === "usd"
     ).amount;
 
-    if (availableBalance >= ownerFee) {
-      // Transfer funds to Owner
+    if (
+      balanceTransaction.status === "available" &&
+      availableBalance >= ownerFee
+    ) {
       await stripe.transfers.create({
         amount: ownerFee,
         currency: "usd",
@@ -141,9 +162,13 @@ const handleBalanceAvailable = async () => {
       transfer.status = "completed";
       await transfer.save();
     } else {
-      console.log("not available");
+      console.log("not enough available balance for the remaining transfers");
+      continue;
     }
   }
 };
 
-module.exports = globalWebhook;
+module.exports = {
+  globalWebhook,
+  retrieveChargeWithRetry,
+};

@@ -4,6 +4,9 @@ const Coupon = require("../models/coupon.model");
 const Order = require("../models/order.model");
 const { User } = require("../models/user.model");
 const ApiError = require("../utils/ApiError");
+const Book = require("../models/book.model");
+const { createOrderAndUpdateCart } = require("./order.controllers");
+
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 
 const getAvailableBalance = asyncHandler(async (req, res) => {
@@ -52,7 +55,9 @@ const onBoarding = asyncHandler(async (req, res) => {
 });
 
 const createCheckoutSession = asyncHandler(async (req, res, next) => {
-  const { couponCode } = req.body;
+  let { couponCode, paymentType } = req.body;
+
+  if (!paymentType) paymentType = "online";
 
   const cart = await Cart.findOne({
     user: req.user._id,
@@ -89,34 +94,30 @@ const createCheckoutSession = asyncHandler(async (req, res, next) => {
     discount = coupon.discount; // Discount amount
   }
 
-  const amount = cart.totalPrice * 100; // Convert to cents
-  const finalPrice = amount - (amount * discount) / 100;
+  const amount = cart.totalPrice;
+  let finalPrice = amount - amount * discount;
 
-  if (finalPrice == 0) {
+  if (paymentType == "offline") {
+    finalPrice += +process.env.OFFLINE_FEE;
+  }
+
+  if (finalPrice == 0 || paymentType == "offline") {
     // create order
     const orderData = {
       user: req.user._id,
       books: cart.books,
       totalItems: cart.totalItems,
       totalPrice: cart.totalPrice,
-      paymentType: "online",
-      paymentStatus: "paid",
+      paymentType,
+      paymentStatus: paymentType == "online" ? "paid" : "unpaid",
       finalPrice,
-      status: "completed",
+      status: paymentType == "online" ? "completed" : "inProgress",
     };
     if (coupon) {
       orderData.coupon = coupon._id;
       orderData.discount = coupon.discount;
     }
-    const order = await Order.create(orderData);
-
-    const user = await User.findById(metadata.userId);
-    cart.books.map((item) => {
-      if (item.book.status == "online") {
-        user.onlineBooks.push(item.book._id);
-      }
-    });
-    await user.save();
+    const order = await createOrderAndUpdateCart(orderData, req.user._id, cart)
 
     return res.status(201).json({ status: "success", data: { order } });
   }
@@ -130,9 +131,9 @@ const createCheckoutSession = asyncHandler(async (req, res, next) => {
           product_data: {
             name: "Cart Purchase", // Description for the checkout session
           },
-          unit_amount: finalPrice, // Final amount after discount
+          unit_amount: finalPrice * 100, 
         },
-        quantity: 1, // Quantity of the single item
+        quantity: 1, 
       },
     ],
     mode: "payment",

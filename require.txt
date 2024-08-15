@@ -10,3 +10,5 @@
 
 (make cart for one owner)
 (subtract stripe fee from owner)
+
+add field in book model (pending, approved, denied)

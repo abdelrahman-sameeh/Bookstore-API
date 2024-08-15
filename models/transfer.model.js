@@ -1,8 +1,12 @@
 const mongoose = require("mongoose");
 
-const pendingTransferSchema = new mongoose.Schema(
+const transferSchema = new mongoose.Schema(
   {
     paymentIntentId: {
+      type: String,
+      required: true,
+    },
+    balanceTransactionId: {
       type: String,
       required: true,
     },
@@ -20,13 +24,18 @@ const pendingTransferSchema = new mongoose.Schema(
       enum: ["pending", "completed"],
       default: "pending",
     },
+    order: {
+      type: mongoose.Types.ObjectId,
+      ref: "Order"
+    },
+    hasOfflineBook: Boolean
   },
   { timestamps: true }
 );
 
-const PendingTransfer = mongoose.model(
-  "PendingTransfer",
-  pendingTransferSchema
+const Transfer = mongoose.model(
+  "Transfer",
+  transferSchema
 );
 
-module.exports = PendingTransfer;
+module.exports = Transfer;

@@ -18,8 +18,11 @@ exports.getLoggedUserCarts = asyncHandler(async (req, res, next) => {
 });
 
 exports.addToCart = asyncHandler(async (req, res, next) => {
-  const { book, count } = req.body;
+  let { book, count } = req.body;
   const bookDoc = await Book.findById(book);
+  if (bookDoc.status == "online" || !count) {
+    count = 1;
+  }
 
   // check if book in user model
   const user = req.user;
@@ -40,9 +43,9 @@ exports.addToCart = asyncHandler(async (req, res, next) => {
 
     cart = new Cart({
       user: req.user._id,
-      books: [{ book, count: count || 1 }],
+      books: [{ book, count }],
       totalItems: count || 1,
-      totalPrice: bookPrice * (count || 1),
+      totalPrice: bookPrice * count,
       ownerId: bookDoc.owner._id,
     });
 
@@ -54,16 +57,14 @@ exports.addToCart = asyncHandler(async (req, res, next) => {
 
     if (existingBookIndex !== -1) {
       // check if count is available
-      if (
-        +count + +cart.books[existingBookIndex].count > bookDoc.count &&
-        bookDoc.status === "offline"
-      ) {
-        return next(new ApiError("book count is not available", 400));
+      if (bookDoc.status == "offline") {
+        if (+count + +cart.books[existingBookIndex].count > bookDoc.count) {
+          return next(new ApiError("book count is not available", 400));
+        }
+        cart.books[existingBookIndex].count += count;
       }
-
-      cart.books[existingBookIndex].count += count || 1;
     } else {
-      cart.books.push({ book, count: count || 1 });
+      cart.books.push({ book, count });
     }
 
     cart.totalItems = cart.books.reduce((acc, item) => acc + item.count, 0);
