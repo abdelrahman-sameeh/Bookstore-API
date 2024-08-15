@@ -6,3 +6,7 @@
 -- order book (Stripe) ++++
 -- delivery if book status is offline 
 -- chat between user and owner
+
+
+(make cart for one owner)
+(subtract stripe fee from owner)

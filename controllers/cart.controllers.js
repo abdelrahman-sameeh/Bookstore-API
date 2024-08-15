@@ -3,25 +3,38 @@ const Book = require("../models/book.model");
 const Cart = require("../models/cart.model");
 const ApiError = require("../utils/ApiError");
 
-exports.getLoggedUserCart = asyncHandler(async (req, res, next) => {
-  const cart = await Cart.findOne({ user: req.user._id });
-  if (!cart) {
+exports.getLoggedUserCarts = asyncHandler(async (req, res, next) => {
+  const carts = await Cart.find({ user: req.user._id });
+  if (!carts.length) {
     return next(new ApiError("cart not found", 404));
   }
 
   res.status(200).json({
     status: "success",
     data: {
-      cart,
+      carts,
     },
   });
 });
 
 exports.addToCart = asyncHandler(async (req, res, next) => {
   const { book, count } = req.body;
-  let cart = await Cart.findOne({ user: req.user._id });
-
   const bookDoc = await Book.findById(book);
+
+  // check if book in user model
+  const user = req.user;
+
+  if (user.onlineBooks.includes(bookDoc._id.toString())) {
+    return next(
+      new ApiError("you already have this book in your library", 400)
+    );
+  }
+
+  let cart = await Cart.findOne({
+    user: req.user._id,
+    ownerId: bookDoc.owner._id,
+  });
+
   if (!cart) {
     const bookPrice = bookDoc.price;
 
@@ -30,6 +43,7 @@ exports.addToCart = asyncHandler(async (req, res, next) => {
       books: [{ book, count: count || 1 }],
       totalItems: count || 1,
       totalPrice: bookPrice * (count || 1),
+      ownerId: bookDoc.owner._id,
     });
 
     await cart.save();
@@ -68,15 +82,18 @@ exports.addToCart = asyncHandler(async (req, res, next) => {
 });
 
 exports.deleteCart = asyncHandler(async (req, res, next) => {
-  await Cart.findOneAndDelete({ user: req.user._id });
+  await Cart.findOneAndDelete({ user: req.user._id, _id: req.body.cartId });
   res.status(204).json();
 });
 
 exports.deleteBookFromCart = asyncHandler(async (req, res, next) => {
-  const { count } = req.body || { count: 1 };
+  let { count, cartId } = req.body;
   const { id: bookId } = req.params;
+  if (!count || +count <= 0) {
+    count = 1;
+  }
 
-  let cart = await Cart.findOne({ user: req.user._id });
+  let cart = await Cart.findOne({ user: req.user._id, _id: cartId });
 
   if (!cart) {
     return next(new ApiError("cart not found", 404));

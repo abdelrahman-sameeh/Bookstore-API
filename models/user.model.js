@@ -29,6 +29,12 @@ const userSchema = new mongoose.Schema(
         required: true,
       },
     ],
+    onlineBooks: [
+      {
+        type: mongoose.Types.ObjectId,
+        ref: "Book",
+      },
+    ],
     stripeAccountId: String,
     completedBoarding: {
       type: Boolean,

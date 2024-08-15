@@ -4,19 +4,20 @@ const {
   addToCart,
   deleteCart,
   deleteBookFromCart,
-  getLoggedUserCart,
+  getLoggedUserCarts,
 } = require("../controllers/cart.controllers");
 const {
   addToCartValidator,
   deleteBookFromCartValidator,
+  deleteCartValidator,
 } = require("../validators/cart.validator");
 const router = express.Router();
 
 router
   .route("/cart")
-  .get(isAuth, getLoggedUserCart)
+  .get(isAuth, getLoggedUserCarts)
   .post(isAuth, addToCartValidator, addToCart)
-  .delete(isAuth, deleteCart);
+  .delete(isAuth, deleteCartValidator, deleteCart);
 
 router.delete(
   "/cart/book/:id",

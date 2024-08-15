@@ -1,10 +1,18 @@
 const asyncHandler = require("../middlewares/asyncHandler");
-const Book = require("../models/book.model");
+const Cart = require("../models/cart.model");
+const Coupon = require("../models/coupon.model");
+const Order = require("../models/order.model");
+const { User } = require("../models/user.model");
 const ApiError = require("../utils/ApiError");
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 
+const getAvailableBalance = asyncHandler(async (req, res) => {
+  const balance = await stripe.balance.retrieve();
+  res.status(200).json(balance);
+});
+
 const onBoarding = asyncHandler(async (req, res) => {
-  const user = req.user
+  const user = req.user;
   if (!user || user.role !== "owner") {
     return res.status(404).send({ error: "User not found or not an owner" });
   }
@@ -43,46 +51,107 @@ const onBoarding = asyncHandler(async (req, res) => {
   res.send({ url: accountLink.url });
 });
 
+const createCheckoutSession = asyncHandler(async (req, res, next) => {
+  const { couponCode } = req.body;
 
-
-
-
-// complete order
-const completeOrder = asyncHandler(async (req, res) => {
-  const { bookId, paymentMethodId } = req.body;
-
-  const user = req.user
-  const book = await Book.findById(bookId).populate("owner");
-
-  if (!user || !book) {
-    return next(new ApiError("user or Book not found", 404));
-  }
-
-  const owner = book.owner;
-  const adminFeePercentage = 10; // Admin fee (10%)
-  const ownerFeePercentage = 90; // Owner fee (90%)
-
-  // Calculate amounts
-  const amount = book.price * 100; // Convert to cents
-  const adminFee = (amount * adminFeePercentage) / 100;
-  const ownerFee = (amount * ownerFeePercentage) / 100;
-
-  // Create a PaymentIntent with a Transfer to the owner's Stripe account
-  const paymentIntent = await stripe.paymentIntents.create({
-    amount: amount,
-    currency: "usd",
-    payment_method: paymentMethodId,
-    confirm: true,
-    application_fee_amount: adminFee, // Admin fee
-    transfer_data: {
-      destination: owner.stripeAccountId, // Owner's Stripe account
+  const cart = await Cart.findOne({
+    user: req.user._id,
+    _id: req.body.cartId,
+  }).populate({
+    path: "books.book",
+    populate: {
+      path: "owner",
+      model: "User",
+      select: "stripeAccountId",
     },
   });
 
-  res.send({ success: true, paymentIntent });
+  if (!cart || cart.totalItems === 0) {
+    return next(new ApiError("cart not found", 404));
+  }
+
+  let discount = 0;
+
+  // Check if a coupon code is provided
+  let coupon;
+  if (couponCode) {
+    coupon = await Coupon.findOne({ code: couponCode });
+
+    if (!coupon) {
+      return next(new ApiError("invalid coupon code", 400));
+    }
+
+    // Check if the coupon has expired
+    if (coupon.expiryDate < new Date()) {
+      return next(new ApiError("coupon code has expired", 400));
+    }
+
+    discount = coupon.discount; // Discount amount
+  }
+
+  const amount = cart.totalPrice * 100; // Convert to cents
+  const finalPrice = amount - (amount * discount) / 100;
+
+  if (finalPrice == 0) {
+    // create order
+    const orderData = {
+      user: req.user._id,
+      books: cart.books,
+      totalItems: cart.totalItems,
+      totalPrice: cart.totalPrice,
+      paymentType: "online",
+      paymentStatus: "paid",
+      finalPrice,
+      status: "completed",
+    };
+    if (coupon) {
+      orderData.coupon = coupon._id;
+      orderData.discount = coupon.discount;
+    }
+    const order = await Order.create(orderData);
+
+    const user = await User.findById(metadata.userId);
+    cart.books.map((item) => {
+      if (item.book.status == "online") {
+        user.onlineBooks.push(item.book._id);
+      }
+    });
+    await user.save();
+
+    return res.status(201).json({ status: "success", data: { order } });
+  }
+
+  const session = await stripe.checkout.sessions.create({
+    payment_method_types: ["card"],
+    line_items: [
+      {
+        price_data: {
+          currency: "usd",
+          product_data: {
+            name: "Cart Purchase", // Description for the checkout session
+          },
+          unit_amount: finalPrice, // Final amount after discount
+        },
+        quantity: 1, // Quantity of the single item
+      },
+    ],
+    mode: "payment",
+    success_url: `http://test/success?session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: `http://test/cancel`,
+    metadata: {
+      cartId: cart._id.toString(),
+      userId: req.user._id.toString(),
+      ownerId: cart.books[0].book.owner._id.toString(),
+      couponId: coupon ? coupon._id.toString() : "",
+      discount: coupon ? coupon.discount : 0,
+      finalPrice,
+    },
+  });
+  res.json({ url: session.url });
 });
 
 module.exports = {
   onBoarding,
-  completeOrder,
+  createCheckoutSession,
+  getAvailableBalance,
 };
