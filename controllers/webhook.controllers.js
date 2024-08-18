@@ -109,7 +109,7 @@ const handleCheckoutSucceeded = async (session) => {
       orderData.discount = metadata.discount;
     }
 
-    const order = await createOrderAndUpdateCart(orderData, metadata.userId, cart)
+    const order = await createOrderAndUpdateCart(orderData, metadata.userId, cart, "online")
 
     // Create the transfer
     await Transfer.create({

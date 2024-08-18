@@ -46,12 +46,36 @@ exports.createCouponValidator = [
 ];
 
 exports.getDeleteOneCouponValidator = [
-  check("id").isMongoId().withMessage("invalid coupon id"),
+  check("id")
+    .isMongoId()
+    .withMessage("invalid coupon id")
+    .custom(async (id, { req }) => {
+      const coupon = await Coupon.findById(id);
+      if (!coupon) {
+        throw new ApiError("coupon not found", 404);
+      }
+      if(coupon.owner.toString() != req.user._id.toString()){
+        throw new ApiError("you do not have permission to access this coupon", 403);
+      }
+      return true;
+    }),
   validatorMiddleware,
 ];
 
 exports.updateOneCouponValidator = [
-  check("id").isMongoId().withMessage("invalid coupon id"),
+  check("id")
+    .isMongoId()
+    .withMessage("invalid coupon id")
+    .custom(async (id, { req }) => {
+      const coupon = await Coupon.findById(id);
+      if (!coupon) {
+        throw new ApiError("coupon not found", 404);
+      }
+      if(coupon.owner.toString() != req.user._id.toString()){
+        throw new ApiError("you do not have permission to access this coupon", 403);
+      }
+      return true;
+    }),
   check("code")
     .optional()
     .notEmpty()

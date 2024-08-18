@@ -1,5 +1,6 @@
 require("dotenv").config();
 const express = require("express");
+const path = require('path')
 const morgan = require("morgan");
 
 const connectDB = require("./api/connectDB");
@@ -19,6 +20,7 @@ const app = express();
 connectDB();
 
 app.use(express.static("./public"));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // app.use((req, res, next) => {
 //   res.setTimeout(300000, () => {
