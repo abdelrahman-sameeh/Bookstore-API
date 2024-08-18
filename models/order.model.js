@@ -7,6 +7,11 @@ const orderSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
+    qrcode: String,
+    address: {
+      type: mongoose.Types.ObjectId,
+      ref: "Address",
+    },
     books: [
       {
         book: {

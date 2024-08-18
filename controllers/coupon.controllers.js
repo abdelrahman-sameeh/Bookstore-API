@@ -4,7 +4,11 @@ const ApiError = require("../utils/ApiError");
 const Pagination = require("../utils/Pagination");
 
 exports.createCoupon = asyncHandler(async (req, res, next) => {
-  const coupon = await Coupon.create(req.body);
+  const data = {
+    ...req.body,
+    owner: req.user._id
+  }
+  const coupon = await Coupon.create(data);
   res.status(201).json({
     status: "success",
     data: {
@@ -15,7 +19,7 @@ exports.createCoupon = asyncHandler(async (req, res, next) => {
 
 exports.getCoupons = asyncHandler(async (req, res, next) => {
   const { available, search, page, limit } = req.query;
-  let query = {};
+  let query = {owner: req.user._id};
   if (available === "true") {
     query.expiryDate = { $gte: new Date() };
   } else if (available === "false") {

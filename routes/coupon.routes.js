@@ -16,16 +16,16 @@ const router = express.Router();
 
 router
   .route("/coupons")
-  .post(isAuth, allowTo("admin"), createCouponValidator, createCoupon)
-  .get(isAuth, allowTo("admin"), getCoupons);
+  .post(isAuth, allowTo("owner"), createCouponValidator, createCoupon)
+  .get(isAuth, allowTo("owner"), getCoupons);
 
 router
   .route("/coupon/:id")
-  .get(isAuth, allowTo("admin"), getDeleteOneCouponValidator, getOneCoupon)
-  .put(isAuth, allowTo("admin"), updateOneCouponValidator, updateOneCoupon)
+  .get(isAuth, allowTo("owner"), getDeleteOneCouponValidator, getOneCoupon)
+  .put(isAuth, allowTo("owner"), updateOneCouponValidator, updateOneCoupon)
   .delete(
     isAuth,
-    allowTo("admin"),
+    allowTo("owner"),
     getDeleteOneCouponValidator,
     deleteOneCoupon
   );

@@ -2,6 +2,11 @@ const { default: mongoose } = require("mongoose");
 
 const couponSchema = new mongoose.Schema(
   {
+    owner: {
+      type: mongoose.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
     code: {
       type: String,
       required: true,

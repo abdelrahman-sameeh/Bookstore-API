@@ -5,6 +5,8 @@ const bcrypt = require("bcryptjs");
 const { createToken } = require("../utils/createToken");
 const { sendEmail } = require("../utils/sendEmailSetup");
 const jwt = require("jsonwebtoken");
+const Delivery = require("../models/delivery.model");
+const { generateSecureRandomString } = require("../utils/generateSecureRandomString");
 
 const register = asyncHandler(async (req, res, next) => {
   const existingUser = await User.findOne({ email: req.body.email });
@@ -19,19 +21,39 @@ const register = asyncHandler(async (req, res, next) => {
   user.save();
 
   // Sanitization
-  const payload = {
+  let payload = {
     _id: user._id,
     name: user.name,
     email: user.email,
+    role: user.role,
   };
 
   // generate token
   const token = await createToken(payload);
 
+  if (req.body.role == "delivery") {
+    const secretKey = generateSecureRandomString();
+    await sendEmail(
+      user.email,
+      "Your Secret Key",
+      `Your secret key is: ${secretKey}`
+    );
+
+    const hashedSecretKey = await bcrypt.hash(secretKey, 10);
+
+    await Delivery.create({ user: user._id, secretKey: hashedSecretKey });
+    user = {
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+    };
+  }
+
   res.status(201).json({
     status: "success",
     data: {
-      user: payload,
+      user,
       token,
     },
   });
@@ -153,7 +175,10 @@ const isAuth = asyncHandler(async (req, res, next) => {
   if (decoded.exp * 1000 < Date.now()) {
     return next(new ApiError("token has been expired", 401));
   }
-  if (user.lastResetPasswordDate && user.lastResetPasswordDate.getTime() > decoded.iat * 1000) {
+  if (
+    user.lastResetPasswordDate &&
+    user.lastResetPasswordDate.getTime() > decoded.iat * 1000
+  ) {
     return next(new ApiError("password changed, please login again", 401));
   }
 
@@ -161,19 +186,21 @@ const isAuth = asyncHandler(async (req, res, next) => {
   next();
 });
 
-const allowTo = (...roles) => (req, res, next) => {
-  const rolesEnum = ['user', 'admin', 'owner']
-  for(const role of roles){
-    if(!rolesEnum.includes(role)){
-      return next(new ApiError(`invalid role ${role}`, 404))
+const allowTo =
+  (...roles) =>
+  (req, res, next) => {
+    const rolesEnum = ["user", "admin", "owner"];
+    for (const role of roles) {
+      if (!rolesEnum.includes(role)) {
+        return next(new ApiError(`invalid role ${role}`, 404));
+      }
     }
-  } 
-  if(!roles.includes(req.user.role)){
-    return next(new ApiError('you have no access to this route', 400))
-  }
+    if (!roles.includes(req.user.role)) {
+      return next(new ApiError("you have no access to this route", 400));
+    }
 
-  next()
-}
+    next();
+  };
 
 module.exports = {
   register,
@@ -182,5 +209,5 @@ module.exports = {
   forgetPassword,
   changePassword,
   isAuth,
-  allowTo
+  allowTo,
 };

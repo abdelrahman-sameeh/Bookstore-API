@@ -55,7 +55,7 @@ const onBoarding = asyncHandler(async (req, res) => {
 });
 
 const createCheckoutSession = asyncHandler(async (req, res, next) => {
-  let { couponCode, paymentType } = req.body;
+  let { couponCode, paymentType, addressId } = req.body;
 
   if (!paymentType) paymentType = "online";
 
@@ -117,7 +117,16 @@ const createCheckoutSession = asyncHandler(async (req, res, next) => {
       orderData.coupon = coupon._id;
       orderData.discount = coupon.discount;
     }
-    const order = await createOrderAndUpdateCart(orderData, req.user._id, cart)
+    if (paymentType == "offline") {
+      orderData.address = addressId;
+    }
+
+    const order = await createOrderAndUpdateCart(
+      orderData,
+      req.user._id,
+      cart,
+      addressId
+    );
 
     return res.status(201).json({ status: "success", data: { order } });
   }
@@ -131,9 +140,9 @@ const createCheckoutSession = asyncHandler(async (req, res, next) => {
           product_data: {
             name: "Cart Purchase", // Description for the checkout session
           },
-          unit_amount: finalPrice * 100, 
+          unit_amount: finalPrice * 100,
         },
-        quantity: 1, 
+        quantity: 1,
       },
     ],
     mode: "payment",
