@@ -29,10 +29,10 @@ const createBook = asyncHandler(async (req, res, next) => {
 
   const image = req.files["image"] ? req.files["image"][0] : null;
   const bookFile = req.files["bookFile"] ? req.files["bookFile"][0] : null;
-  if (!req.body.imageCover) {
+  if (!req.body.imageCover && image) {
     req.body.imageCover = image.path;
   }
-  if (!req.body.book) {
+  if (!req.body.book && bookFile) {
     req.body.book = bookFile.path;
   }
   req.body.owner = req.user._id;

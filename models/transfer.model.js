@@ -4,11 +4,9 @@ const transferSchema = new mongoose.Schema(
   {
     paymentIntentId: {
       type: String,
-      required: true,
     },
     balanceTransactionId: {
       type: String,
-      required: true,
     },
     ownerId: {
       type: mongoose.Schema.Types.ObjectId,

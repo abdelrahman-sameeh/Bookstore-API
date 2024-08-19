@@ -109,7 +109,12 @@ const handleCheckoutSucceeded = async (session) => {
       orderData.discount = metadata.discount;
     }
 
-    const order = await createOrderAndUpdateCart(orderData, metadata.userId, cart, "online")
+    const order = await createOrderAndUpdateCart(
+      orderData,
+      metadata.userId,
+      cart,
+      "online"
+    );
 
     // Create the transfer
     await Transfer.create({
@@ -131,6 +136,8 @@ const handleBalanceAvailable = async () => {
   const transfers = await Transfer.find({
     status: "pending",
     hasOfflineBook: false,
+    paymentIntentId: { $ne: null },
+    balanceTransactionId: { $ne: null },
   }).sort({ createdAt: 1 });
 
   for (const transfer of transfers) {
@@ -146,14 +153,14 @@ const handleBalanceAvailable = async () => {
     const balance = await stripe.balance.retrieve();
     const availableBalance = balance.available.find(
       (b) => b.currency === "usd"
-    ).amount;
+    ).amount / 100;
 
     if (
       balanceTransaction.status === "available" &&
       availableBalance >= ownerFee
     ) {
       await stripe.transfers.create({
-        amount: ownerFee,
+        amount: ownerFee * 100,
         currency: "usd",
         destination: owner.stripeAccountId,
         transfer_group: transfer.paymentIntentId,
