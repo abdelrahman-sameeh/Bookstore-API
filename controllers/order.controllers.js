@@ -11,15 +11,17 @@ const calculateStripeFee = require("../utils/stripeFee");
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const QRCode = require("qrcode");
 const Cart = require("../models/cart.model");
+const Delivery = require("../models/delivery.model");
+const bcrypt = require("bcryptjs");
+const { sendEmail } = require("../utils/sendEmailSetup");
 
-const cloudinary = require('cloudinary').v2;
+const cloudinary = require("cloudinary").v2;
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_SECRET_KEY,
 });
-
 
 const ensureDirectoryExists = (dirPath) => {
   if (!fs.existsSync(dirPath)) {
@@ -39,7 +41,7 @@ const generateQRCode = async (orderId) => {
     // Ensure the directory exists
     ensureDirectoryExists(dirPath);
 
-    const backendEndpoint = `${getBaseUrl()}/orders/${orderId.toString()}?secretKey=YOUR_SECRET_KEY`;
+    const backendEndpoint = `${getBaseUrl()}/orders/${orderId.toString()}/delivery/YOUR_SECRET_KEY`;
     await QRCode.toFile(qrCodePath, backendEndpoint);
 
     // Construct the local URL
@@ -47,7 +49,7 @@ const generateQRCode = async (orderId) => {
     return qrCodeUrl;
   } else {
     // Production environment: Upload QR code to Cloudinary
-    const backendEndpoint = `${getBaseUrl()}/orders/${orderId.toString()}?secretKey=YOUR_SECRET_KEY`;
+    const backendEndpoint = `${getBaseUrl()}/orders/${orderId.toString()}/delivery/YOUR_SECRET_KEY`;
     const qrCodeBuffer = await QRCode.toBuffer(backendEndpoint);
 
     const result = await new Promise((resolve, reject) => {
@@ -74,7 +76,12 @@ const generateQRCode = async (orderId) => {
   }
 };
 
-const createOrderAndUpdateCart = async (orderData, userId, cart) => {
+const createOrderAndUpdateCart = async (
+  orderData,
+  userId,
+  cart,
+  paymentType
+) => {
   // Create the order
   const order = await Order.create(orderData);
 
@@ -88,10 +95,11 @@ const createOrderAndUpdateCart = async (orderData, userId, cart) => {
 
   // Iterate through the books in the cart
   for (const item of cart.books) {
-    if (item.book.status === "online") {
+    if (item.book.status === "online" && paymentType == "online") {
       // Add the book to the user's onlineBooks
       user.onlineBooks.push(item.book._id);
-    } else if (item.book.status === "offline") {
+    }
+    if (item.book.status === "offline") {
       // Reduce the count of offline books
       await Book.findByIdAndUpdate(item.book._id, {
         $inc: { count: -item.count },
@@ -110,58 +118,132 @@ const createOrderAndUpdateCart = async (orderData, userId, cart) => {
 };
 
 const makeOrderInDelivery = asyncHandler(async (req, res, next) => {
-  const order = await Order.findById(req.params.id);
+  const { orderId, deliveryId } = req.body;
+
+  await Delivery.findByIdAndUpdate(
+    deliveryId,
+    {
+      $addToSet: { pendingOrders: orderId },
+    },
+    { new: true }
+  );
+
+  const order = await Order.findByIdAndUpdate(
+    orderId,
+    { status: "inDelivery" },
+    { new: true }
+  );
+  return res.status(200).json({ status: "success", data: { order } });
+});
+
+const handleMakeOrderCompleted = asyncHandler(async (req, res, next) => {
+  const { orderId, deliverySecretKey } = req.params;
+
+  // Find the delivery associated with the order
+  const delivery = await Delivery.findOne({ pendingOrders: orderId });
+
+  if (!delivery) {
+    return next(new ApiError("Delivery not found", 404));
+  }
+
+  // Compare the provided secret key with the hashed one stored in the database
+  const isMatch = await bcrypt.compare(deliverySecretKey, delivery.secretKey);
+
+  if (!isMatch) {
+    return next(new ApiError("invalid secret key", 401));
+  }
+
+  // Continue with the process of marking the order as completed
+  const order = await Order.findById(orderId).populate({
+    path: "books.book",
+    populate: {
+      path: "owner",
+      model: "User",
+      select: "stripeAccountId name email",
+    },
+  });
+
   if (!order) {
     return next(new ApiError("order not found", 404));
   }
 
-  if (order.status == "inProgress") {
-    const transfer = await Transfer.findOne({ order: order._id });
+  // Mark the order as completed
+  order.status = "completed";
+  order.paymentStatus = "paid";
+  await order.save();
 
-    // calculate owner fees
-    const owner = await User.findById(transfer.ownerId);
-    const ownerFee = Math.floor(
-      transfer.amount * 0.9 - calculateStripeFee(transfer.amount)
-    );
+  // Remove the order from the delivery's pendingOrders
+  delivery.pendingOrders = delivery.pendingOrders.filter(
+    (pendingOrderId) => pendingOrderId.toString() !== orderId
+  );
+  delivery.deliveredOrders.push(orderId);
+  await delivery.save();
 
-    // calculate available in main account
-    const balance = await stripe.balance.retrieve();
-    const availableBalance = balance.available.find(
-      (b) => b.currency === "usd"
-    ).amount;
-
-    // check if transfer status changed from pending to available
-    const balanceTransaction = await stripe.balanceTransactions.retrieve(
-      transfer.balanceTransactionId
-    );
-
-    if (balanceTransaction.status === "available") {
-      if (availableBalance >= ownerFee) {
-        await stripe.transfers.create({
-          amount: ownerFee,
-          currency: "usd",
-          destination: owner.stripeAccountId,
-          transfer_group: transfer.paymentIntentId,
-        });
-
-        transfer.status = "completed";
-        await transfer.save();
-
-        order.status = "inDelivery";
-        order.save();
-        return res.status(200).json({ status: "success", data: { order } });
-      } else {
-        return next(new ApiError("not enough money", 400));
-      }
-    } else {
-      return next(new ApiError("transfer not available", 400));
+  // save online books to user
+  const user = await User.findById(order.user);
+  for (const item of order.books) {
+    if (item.book.status === "online") {
+      user.onlineBooks.push(item.book._id);
     }
   }
+  await user.save();
 
-  return next(new ApiError(`order status is ${order.status}`, 400));
+  // prepare money to send to owner
+  const price = order.finalPrice - process.env.OFFLINE_FEE;
+
+  // send owner money
+  const ownerName = order.books[0].book.owner.name
+  const ownerEmail = order.books[0].book.owner.email
+  const ownerStripeAccountId = order.books[0].book.owner.stripeAccountId;
+  const ownerFee = Math.floor(price * 0.9 - calculateStripeFee(price));
+  
+
+  const balance = await stripe.balance.retrieve();
+  const availableBalance =
+    balance.available.find((b) => b.currency === "usd").amount / 100;
+
+  if (availableBalance >= ownerFee) {
+    await stripe.transfers.create({
+      amount: ownerFee * 100,
+      currency: "usd",
+      destination: ownerStripeAccountId,
+    });
+
+    await sendEmail(
+      ownerEmail,
+      "تم تحويل الأموال بنجاح",
+      `مرحبًا ${ownerName}
+      نود إعلامك بأن تحويل الأموال قد تم بنجاح.
+      شكرًا لاستخدامك منصتنا.`
+    );
+  } else {
+    const transferData = {
+      ownerId: order.books[0].book.owner._id,
+      amount: order.finalPrice,
+      status: "pending",
+      order: order._id,
+    };
+    await Transfer.create(transferData);
+    await sendEmail(
+      ownerEmail,
+      "تأخير في تحويل الأموال",
+      `
+      مرحبًا ${ownerName}
+      نود إعلامك بأن تحويل الأموال قد تم تأخيره. سيتم إتمام التحويل قريبًا.
+      شكرًا لتفهمك.`
+    );
+    return next(new ApiError("not enough money", 400));
+  }
+
+  return res.status(200).json({
+    status: "success",
+    message: "order completed successfully",
+    data: { order },
+  });
 });
 
 module.exports = {
   makeOrderInDelivery,
   createOrderAndUpdateCart,
+  handleMakeOrderCompleted,
 };

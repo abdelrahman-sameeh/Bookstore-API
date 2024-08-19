@@ -41,6 +41,10 @@ exports.addToCart = asyncHandler(async (req, res, next) => {
   if (!cart) {
     const bookPrice = bookDoc.price;
 
+    if (+count > bookDoc.count) {
+      return next(new ApiError("book count is not available", 400));
+    }
+
     cart = new Cart({
       user: req.user._id,
       books: [{ book, count }],

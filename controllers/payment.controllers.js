@@ -75,6 +75,15 @@ const createCheckoutSession = asyncHandler(async (req, res, next) => {
     return next(new ApiError("cart not found", 404));
   }
 
+  // check if one book not available (by count) 
+  const notAvailableItemsInStock = cart.books.filter(item=> item.count > item.book.count)
+  if(notAvailableItemsInStock.length){
+    return res.status(400).json({
+      message: "these books not available",
+      books: notAvailableItemsInStock
+    })
+  }
+
   let discount = 0;
 
   // Check if a coupon code is provided
@@ -125,7 +134,7 @@ const createCheckoutSession = asyncHandler(async (req, res, next) => {
       orderData,
       req.user._id,
       cart,
-      addressId
+      paymentType
     );
 
     return res.status(201).json({ status: "success", data: { order } });
