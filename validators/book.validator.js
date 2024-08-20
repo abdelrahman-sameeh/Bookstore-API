@@ -109,9 +109,28 @@ const deleteBookValidator = [
   validatorMiddleware,
 ];
 
+const reviewBookValidator = [
+  check("id").isMongoId().withMessage("invalid book id"),
+  check("reviewStatus")
+    .notEmpty()
+    .withMessage("reviewStatus is required")
+    .custom(async (reviewStatus, {req}) => {
+      const reviews = ["approved", "denied"]
+      if (!reviews.includes(reviewStatus.toLowerCase())) {
+        throw new ApiError("review status must be either approved or denied");
+      }
+      if(reviewStatus.toLowerCase() == "denied" && !req.body.deniedReason){
+        throw new ApiError("deniedReason is required", 400);
+      }
+      return true;
+    }),
+  validatorMiddleware,
+];
+
 module.exports = {
   createBookValidator,
   getBookValidator,
   deleteBookValidator,
   updateBookValidator,
+  reviewBookValidator,
 };

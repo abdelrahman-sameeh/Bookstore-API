@@ -2,10 +2,20 @@ const asyncHandler = require("../middlewares/asyncHandler");
 const Book = require("../models/book.model");
 const ApiError = require("../utils/ApiError");
 const Pagination = require("../utils/Pagination");
+const { sendEmail } = require("../utils/sendEmailSetup");
 
 const getBooks = asyncHandler(async (req, res, next) => {
   const { search, page, limit } = req.query;
-  const query = {};
+  const { role, _id: userId } = req.user || {}; 
+  let query = {};
+
+  if (!role) {
+    // for only users
+    query.reviewStatus = "approved";
+  } else if (role === "owner") {
+    // for owner
+    query.owner = userId;
+  }
 
   if (search) {
     query.$or = [
@@ -75,10 +85,39 @@ const deleteOneBook = asyncHandler(async (req, res, next) => {
   res.status(204).json();
 });
 
+const reviewBook = asyncHandler(async (req, res, next) => {
+  let reviewStatus = req.body.reviewStatus.toLowerCase();
+
+  const book = await Book.findByIdAndUpdate(
+    req.params.id,
+    { reviewStatus },
+    { new: true }
+  ).populate("owner", "email name");
+
+  if (!book) {
+    return next(new ApiError("Book not found", 404));
+  }
+
+  // Prepare the email content
+  const emailSubject = `Your book "${book.title}" has been ${reviewStatus}`;
+  const emailText = `Dear ${book.owner.name},\n\nYour book titled "${
+    book.title
+  }" has been ${reviewStatus} by our team.${
+    reviewStatus == "denied"
+      ? `\n\nthe denied reason is ${req.body.deniedReason}.`
+      : null
+  }\n\nThank you.`;
+
+  // Send the email to the owner
+  await sendEmail(book.owner.email, emailSubject, emailText);
+  res.status(200).json({ status: "success", data: book });
+});
+
 module.exports = {
   createBook,
   getBooks,
   getOneBook,
   deleteOneBook,
   updateBook,
+  reviewBook,
 };

@@ -12,6 +12,7 @@ exports.addToCartValidator = [
     .custom(async (id) => {
       const book = await Book.findById(id);
       if (!book) throw new ApiError("not found", 404);
+      if(book.reviewStatus == "denied")throw new ApiError("this book is not available, because it's denied", 400)
       return true;
     }),
   check("count")

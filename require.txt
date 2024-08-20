@@ -2,16 +2,16 @@
 -- coupon  ++++ ----
 -- cart for user ++++ ----
 -- onboarding ++++ ----
+-- order book (Stripe) ++++ ----
+-- delivery if book status is offline ++++ ----
 
--- order book (Stripe) ++++
--- delivery if book status is offline 
 -- chat between user and owner
 
+################### backlog ###################
 
-(make cart for one owner)
-(subtract stripe fee from owner)
+(make cart for one owner) ++++ ----
+(update coupon to be for owner) ++++ ---- 
+(add address for offline order) ++++ ----
+(subtract stripe fee from owner) ++++ ----
 
-add field in book model (pending, approved, denied)
-
---update coupon to be for owner 
---add address for offline order
+(add field in book model [pending, approved, denied])

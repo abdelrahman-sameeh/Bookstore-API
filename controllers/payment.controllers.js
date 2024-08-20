@@ -1,10 +1,8 @@
 const asyncHandler = require("../middlewares/asyncHandler");
 const Cart = require("../models/cart.model");
 const Coupon = require("../models/coupon.model");
-const Order = require("../models/order.model");
 const { User } = require("../models/user.model");
 const ApiError = require("../utils/ApiError");
-const Book = require("../models/book.model");
 const { createOrderAndUpdateCart } = require("./order.controllers");
 const Transfer = require("../models/transfer.model");
 const { calculateOwnerFee } = require("../utils/calculateFees");
@@ -94,7 +92,7 @@ const createCheckoutSession = asyncHandler(async (req, res, next) => {
   // Check if a coupon code is provided
   let coupon;
   if (couponCode) {
-    coupon = await Coupon.findOne({ code: couponCode });
+    coupon = await Coupon.findOne({ code: couponCode, owner: cart.ownerId });
 
     if (!coupon) {
       return next(new ApiError("invalid coupon code", 400));
@@ -109,11 +107,15 @@ const createCheckoutSession = asyncHandler(async (req, res, next) => {
   }
 
   const amount = cart.totalPrice;
-  let finalPrice = amount - amount * discount;
+  let finalPrice = amount - (amount * discount) / 100;
 
   const hasOfflineBook = cart.books.some(
     (item) => item.book.status === "offline"
   );
+
+  if ((hasOfflineBook || paymentType == "offline") && !req.body.addressId) {
+    return next(new ApiError("address is required", 400));
+  }
 
   if (hasOfflineBook || paymentType == "offline") {
     finalPrice += +process.env.DELIVERY_TAX;
@@ -129,7 +131,7 @@ const createCheckoutSession = asyncHandler(async (req, res, next) => {
       paymentType,
       paymentStatus: paymentType == "online" ? "paid" : "unpaid",
       finalPrice,
-      status: paymentType == "online" ? "completed" : "inProgress",
+      status: hasOfflineBook ? "inProgress" : "completed",
     };
     if (coupon) {
       orderData.coupon = coupon._id;
@@ -194,10 +196,11 @@ const payDebtsForOwners = asyncHandler(async (req, res, next) => {
 
     const owner = await User.findById(transfer.ownerId);
     const ownerFee = calculateOwnerFee(transfer.amount);
+    const roundedAmount = Math.round(ownerFee * 100);
 
     if (availableBalance >= transfer.amount) {
       await stripe.transfers.create({
-        amount: ownerFee * 100,
+        amount: roundedAmount,
         currency: "usd",
         destination: owner.stripeAccountId,
         transfer_group: transfer.paymentIntentId,

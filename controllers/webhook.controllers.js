@@ -146,6 +146,7 @@ const handleBalanceAvailable = async () => {
 
     const owner = await User.findById(transfer.ownerId);
     const ownerFee = calculateOwnerFee(transfer.amount);
+    const roundedAmount = Math.round(ownerFee * 100);
 
     const balance = await stripe.balance.retrieve();
     const availableBalance =
@@ -156,7 +157,7 @@ const handleBalanceAvailable = async () => {
       availableBalance >= ownerFee
     ) {
       await stripe.transfers.create({
-        amount: ownerFee * 100,
+        amount: roundedAmount,
         currency: "usd",
         destination: owner.stripeAccountId,
         transfer_group: transfer.paymentIntentId,
