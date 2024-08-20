@@ -6,6 +6,9 @@ const { User } = require("../models/user.model");
 const ApiError = require("../utils/ApiError");
 const Book = require("../models/book.model");
 const { createOrderAndUpdateCart } = require("./order.controllers");
+const Transfer = require("../models/transfer.model");
+const { calculateOwnerFee } = require("../utils/calculateFees");
+const { sendEmail } = require("../utils/sendEmailSetup");
 
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 
@@ -75,13 +78,15 @@ const createCheckoutSession = asyncHandler(async (req, res, next) => {
     return next(new ApiError("cart not found", 404));
   }
 
-  // check if one book not available (by count) 
-  const notAvailableItemsInStock = cart.books.filter(item=> item.count > item.book.count)
-  if(notAvailableItemsInStock.length){
+  // check if one book not available (by count)
+  const notAvailableItemsInStock = cart.books.filter(
+    (item) => item.count > item.book.count
+  );
+  if (notAvailableItemsInStock.length) {
     return res.status(400).json({
       message: "these books not available",
-      books: notAvailableItemsInStock
-    })
+      books: notAvailableItemsInStock,
+    });
   }
 
   let discount = 0;
@@ -106,8 +111,12 @@ const createCheckoutSession = asyncHandler(async (req, res, next) => {
   const amount = cart.totalPrice;
   let finalPrice = amount - amount * discount;
 
-  if (paymentType == "offline") {
-    finalPrice += +process.env.OFFLINE_FEE;
+  const hasOfflineBook = cart.books.some(
+    (item) => item.book.status === "offline"
+  );
+
+  if (hasOfflineBook || paymentType == "offline") {
+    finalPrice += +process.env.DELIVERY_TAX;
   }
 
   if (finalPrice == 0 || paymentType == "offline") {
@@ -169,8 +178,54 @@ const createCheckoutSession = asyncHandler(async (req, res, next) => {
   res.json({ url: session.url });
 });
 
+const payDebtsForOwners = asyncHandler(async (req, res, next) => {
+  const transfers = await Transfer.find({
+    status: "pending",
+    paymentIntentId: null,
+    balanceTransactionId: null,
+  });
+
+  const updatedTransfers = [];
+
+  for (const transfer of transfers) {
+    const balance = await stripe.balance.retrieve();
+    const availableBalance =
+      balance.available.find((b) => b.currency === "usd").amount / 100;
+
+    const owner = await User.findById(transfer.ownerId);
+    const ownerFee = calculateOwnerFee(transfer.amount);
+
+    if (availableBalance >= transfer.amount) {
+      await stripe.transfers.create({
+        amount: ownerFee * 100,
+        currency: "usd",
+        destination: owner.stripeAccountId,
+        transfer_group: transfer.paymentIntentId,
+      });
+
+      transfer.status = "completed";
+      await transfer.save();
+
+      await sendEmail(
+        owner.email,
+        "تم تحويل الأموال بنجاح",
+        `مرحبًا ${owner.name}
+        نود إعلامك بأن تحويل الأموال قد تم بنجاح.
+        شكرًا لاستخدامك منصتنا.`
+      );
+      updatedTransfers.push(transfer);
+    }
+  }
+
+  res.status(200).json({
+    message: "Transfers processed successfully",
+    transfers: updatedTransfers,
+  });
+});
+
 module.exports = {
   onBoarding,
   createCheckoutSession,
   getAvailableBalance,
+  payDebtsForOwners,
 };
