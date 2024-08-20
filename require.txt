@@ -13,5 +13,5 @@
 (update coupon to be for owner) ++++ ---- 
 (add address for offline order) ++++ ----
 (subtract stripe fee from owner) ++++ ----
+(add field in book model [pending, approved, denied]) ++++ ----
 
-(add field in book model [pending, approved, denied])
