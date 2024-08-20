@@ -13,6 +13,11 @@ const bookSchema = new mongoose.Schema(
       enum: ["online", "offline"],
       default: 'online'
     },
+    reviewStatus: {
+      type: String,
+      enum: ["pending", "approved", "denied"],
+      default: 'pending'
+    },
     owner: {
       type: mongoose.Types.ObjectId,
       ref: "User",

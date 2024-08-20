@@ -8,11 +8,10 @@ function calculateStripeFee(amount) {
 
 function calculateOwnerFee(amount) {
   const stripeFee = calculateStripeFee(amount);
-  const platformFeesPercentage = 1 - +process.env.PLATFORM_FEE_PERCENTAGE // 90% from amount
+  const platformFeesPercentage = 1 - parseFloat(process.env.PLATFORM_FEE_PERCENTAGE); // 90% from amount
   const ownerFee = amount * platformFeesPercentage - stripeFee;
-  return ownerFee;
+  return +ownerFee.toFixed(2);
 }
-
 
 module.exports =  {
   calculateOwnerFee

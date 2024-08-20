@@ -8,13 +8,7 @@ exports.createCheckoutSessionValidator = [
     .notEmpty()
     .withMessage("cartId is required")
     .isMongoId()
-    .withMessage("invalid cartId")
-    .custom((_, { req }) => {
-      if (req.body.paymentType == "offline" && !req.body.addressId) {
-        throw new ApiError("address id is required", 400);
-      }
-      return true;
-    }),
+    .withMessage("invalid cartId"),
   check("addressId")
     .optional()
     .isMongoId()

@@ -160,7 +160,7 @@ const isAuth = asyncHandler(async (req, res, next) => {
   const authorization = req.headers.authorization || req.headers.Authorization;
 
   if (!authorization || !authorization.startsWith("Bearer ")) {
-    return next(new ApiError("No token provided", 400));
+    return next(new ApiError("no token provided", 400));
   }
   const token = authorization.split(" ")[1];
   const decoded = jwt.decode(token);
