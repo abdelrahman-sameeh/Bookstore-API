@@ -7,13 +7,13 @@ const Transfer = require("../models/transfer.model");
 const { User } = require("../models/user.model");
 const ApiError = require("../utils/ApiError");
 const { getBaseUrl } = require("../utils/getBaseUrl");
-const calculateStripeFee = require("../utils/stripeFee");
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const QRCode = require("qrcode");
 const Cart = require("../models/cart.model");
 const Delivery = require("../models/delivery.model");
 const bcrypt = require("bcryptjs");
 const { sendEmail } = require("../utils/sendEmailSetup");
+const { calculateOwnerFee } = require("../utils/calculateFees");
 
 const cloudinary = require("cloudinary").v2;
 
@@ -189,14 +189,13 @@ const handleMakeOrderCompleted = asyncHandler(async (req, res, next) => {
   await user.save();
 
   // prepare money to send to owner
-  const price = order.finalPrice - process.env.OFFLINE_FEE;
+  const price = order.finalPrice - process.env.DELIVERY_TAX;
 
   // send owner money
-  const ownerName = order.books[0].book.owner.name
-  const ownerEmail = order.books[0].book.owner.email
+  const ownerName = order.books[0].book.owner.name;
+  const ownerEmail = order.books[0].book.owner.email;
   const ownerStripeAccountId = order.books[0].book.owner.stripeAccountId;
-  const ownerFee = Math.floor(price * 0.9 - calculateStripeFee(price));
-  
+  const ownerFee = calculateOwnerFee(price);
 
   const balance = await stripe.balance.retrieve();
   const availableBalance =
@@ -208,6 +207,13 @@ const handleMakeOrderCompleted = asyncHandler(async (req, res, next) => {
       currency: "usd",
       destination: ownerStripeAccountId,
     });
+    
+    if (order.paymentType == "online") {
+      await Transfer.findOneAndUpdate(
+        { order: order._id },
+        { status: "completed" }
+      );
+    }
 
     await sendEmail(
       ownerEmail,

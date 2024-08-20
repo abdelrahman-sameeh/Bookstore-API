@@ -5,19 +5,36 @@ const {
   onBoarding,
   createCheckoutSession,
   getAvailableBalance,
+  payDebtsForOwners,
 } = require("../controllers/payment.controllers");
-const { createCheckoutSessionValidator } = require("../validators/payment.validator");
+const {
+  createCheckoutSessionValidator,
+} = require("../validators/payment.validator");
 
-// Endpoint to initiate Stripe onboarding for owners
+// initiate Stripe onboarding for owners
 router.post("/stripe/onboard", isAuth, onBoarding);
-// Endpoint to handle book purchase
-router.post("/purchase", isAuth, createCheckoutSessionValidator, createCheckoutSession);
+
+// handle book purchase
+router.post(
+  "/purchase",
+  isAuth,
+  createCheckoutSessionValidator,
+  createCheckoutSession
+);
 
 router.get(
   "/available-balance",
   isAuth,
   // allowTo("admin"),
   getAvailableBalance
+);
+
+// Pay the debts for owners
+router.post(
+  "/stripe/payDebts",
+  isAuth,
+  // allowTo("admin"),
+  payDebtsForOwners
 );
 
 module.exports = router;

@@ -1,9 +1,8 @@
-const Book = require("../models/book.model");
 const Cart = require("../models/cart.model");
-const Order = require("../models/order.model");
 const Transfer = require("../models/transfer.model");
 const { User } = require("../models/user.model");
-const calculateStripeFee = require("../utils/stripeFee");
+const { calculateOwnerFee } = require("../utils/calculateFees");
+const { sendEmail } = require("../utils/sendEmailSetup");
 const { createOrderAndUpdateCart } = require("./order.controllers");
 
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
@@ -146,14 +145,11 @@ const handleBalanceAvailable = async () => {
     );
 
     const owner = await User.findById(transfer.ownerId);
-    const ownerFee = Math.floor(
-      transfer.amount * 0.9 - calculateStripeFee(transfer.amount)
-    );
+    const ownerFee = calculateOwnerFee(transfer.amount);
 
     const balance = await stripe.balance.retrieve();
-    const availableBalance = balance.available.find(
-      (b) => b.currency === "usd"
-    ).amount / 100;
+    const availableBalance =
+      balance.available.find((b) => b.currency === "usd").amount / 100;
 
     if (
       balanceTransaction.status === "available" &&
@@ -168,6 +164,15 @@ const handleBalanceAvailable = async () => {
 
       transfer.status = "completed";
       await transfer.save();
+
+      await sendEmail(
+        owner.email,
+        "تم تحويل الأموال بنجاح",
+        `مرحبًا ${owner.name}
+        نود إعلامك بأن تحويل الأموال قد تم بنجاح.
+        شكرًا لاستخدامك منصتنا.`
+      );
+
     } else {
       console.log("not enough available balance for the remaining transfers");
       continue;
