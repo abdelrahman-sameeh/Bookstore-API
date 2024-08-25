@@ -1,5 +1,3 @@
-stripe listen >> stripe listen --forward-to=http://localhost:5000/api/v1/webhook
-
 # Payment Process
 
 This document describes the payment process in the application, including the types of payments supported, the flow of transactions, and key considerations for managing payments securely and efficiently.
