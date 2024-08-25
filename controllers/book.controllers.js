@@ -6,7 +6,7 @@ const { sendEmail } = require("../utils/sendEmailSetup");
 
 const getBooks = asyncHandler(async (req, res, next) => {
   const { search, page, limit } = req.query;
-  const { role, _id: userId } = req.user || {}; 
+  const { role, _id: userId } = req.user || {};
   let query = {};
 
   if (!role) {
@@ -105,7 +105,7 @@ const reviewBook = asyncHandler(async (req, res, next) => {
   }" has been ${reviewStatus} by our team.${
     reviewStatus == "denied"
       ? `\n\nthe denied reason is ${req.body.deniedReason}.`
-      : null
+      : ""
   }\n\nThank you.`;
 
   // Send the email to the owner

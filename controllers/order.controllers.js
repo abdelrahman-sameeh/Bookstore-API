@@ -13,7 +13,10 @@ const Cart = require("../models/cart.model");
 const Delivery = require("../models/delivery.model");
 const bcrypt = require("bcryptjs");
 const { sendEmail } = require("../utils/sendEmailSetup");
-const { calculateOwnerFee } = require("../utils/calculateFees");
+const {
+  calculateOwnerFee,
+  calculateStripeFee,
+} = require("../utils/calculateFees");
 
 const cloudinary = require("cloudinary").v2;
 
@@ -170,14 +173,14 @@ const handleMakeOrderCompleted = asyncHandler(async (req, res, next) => {
   // Mark the order as completed
   order.status = "completed";
   order.paymentStatus = "paid";
-  // await order.save();
+  await order.save();
 
   // Remove the order from the delivery's pendingOrders
   delivery.pendingOrders = delivery.pendingOrders.filter(
     (pendingOrderId) => pendingOrderId.toString() !== orderId
   );
   delivery.deliveredOrders.push(orderId);
-  // await delivery.save();
+  await delivery.save();
 
   // save online books to user
   const user = await User.findById(order.user);
@@ -196,19 +199,19 @@ const handleMakeOrderCompleted = asyncHandler(async (req, res, next) => {
   const ownerEmail = order.books[0].book.owner.email;
   const ownerStripeAccountId = order.books[0].book.owner.stripeAccountId;
   const ownerFee = calculateOwnerFee(price);
-  const roundedAmount = Math.round(ownerFee * 100);
+  const roundedAmount = Math.round(ownerFee);
 
   const balance = await stripe.balance.retrieve();
   const availableBalance =
     balance.available.find((b) => b.currency === "usd").amount / 100;
 
-  if (availableBalance >= ownerFee) {
+  if (availableBalance >= roundedAmount) {
     await stripe.transfers.create({
-      amount: roundedAmount,
+      amount: roundedAmount * 100,
       currency: "usd",
       destination: ownerStripeAccountId,
     });
-    
+
     if (order.paymentType == "online") {
       await Transfer.findOneAndUpdate(
         { order: order._id },
@@ -249,8 +252,77 @@ const handleMakeOrderCompleted = asyncHandler(async (req, res, next) => {
   });
 });
 
+const cancelOrder = asyncHandler(async (req, res, next) => {
+  const order = req.order;
+  order.status = req.body.status;
+  await order.save();
+
+  // if have offline book update stock
+  for (const item of order.books) {
+    if (item.book["status"] == "offline") {
+      await Book.findByIdAndUpdate(item.book._id, {
+        $inc: { count: item.count },
+      });
+    }
+  }
+
+  // refund money to user if order payment status is online
+  if (order.paymentType == "online" && order.paymentStatus == "paid") {
+    const transfer = await Transfer.findOne({ order: order._id });
+
+    const balanceTransaction = await stripe.balanceTransactions.retrieve(
+      transfer.balanceTransactionId
+    );
+
+    if (balanceTransaction.status !== "available") {
+      transfer.status = "failedRefund";
+      await transfer.save();
+      await sendEmail(
+        req.user.email,
+        "Refund Processing Delayed",
+        `Dear ${req.user.name},\n\nThe refund for your order ${order._id} cannot be processed at the moment as the funds are not yet available. We will notify you once the funds are available and the refund has been processed.\n\nThank you for your patience.\n\nBest regards,\nYour Company Name`
+      );
+
+      return res
+        .status(200)
+        .json({ status: "success", message: "order cancelled successfully" });
+    }
+
+    const balance = await stripe.balance.retrieve();
+    const availableBalance =
+      balance.available.find((b) => b.currency === "usd").amount / 100;
+    if (availableBalance >= transfer.amount) {
+      await stripe.refunds.create({
+        payment_intent: transfer.paymentIntentId,
+        amount: (transfer.amount - calculateStripeFee(transfer.amount)) * 100,
+      });
+      transfer.status = "completed";
+      await transfer.save();
+      // send email to user
+      await sendEmail(
+        req.user.email, // User's email
+        "Refund Processed Successfully",
+        `Dear ${req.user.name},\n\nThe refund for your order ${order._id} has been processed successfully.\n\nThank you for your patience.\n\nBest regards,\nYour Company Name`
+      );
+    } else {
+      transfer.status = "failedRefund";
+      await transfer.save();
+
+      await sendEmail(
+        req.user.email,
+        "Refund Processing Failed",
+        `Dear ${req.user.name},\n\nWe regret to inform you that the refund for your order ${order._id} could not be processed successfully. Please contact our support team for further assistance.\n\nThank you for your understanding.`
+      );
+    }
+  }
+  return res
+    .status(200)
+    .json({ status: "success", message: "order cancelled successfully" });
+});
+
 module.exports = {
   makeOrderInDelivery,
   createOrderAndUpdateCart,
   handleMakeOrderCompleted,
+  cancelOrder,
 };

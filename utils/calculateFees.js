@@ -14,5 +14,6 @@ function calculateOwnerFee(amount) {
 }
 
 module.exports =  {
-  calculateOwnerFee
+  calculateOwnerFee,
+  calculateStripeFee
 }
