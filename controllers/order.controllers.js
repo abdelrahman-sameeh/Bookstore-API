@@ -173,14 +173,14 @@ const handleMakeOrderCompleted = asyncHandler(async (req, res, next) => {
   // Mark the order as completed
   order.status = "completed";
   order.paymentStatus = "paid";
-  // await order.save();
+  await order.save();
 
   // Remove the order from the delivery's pendingOrders
   delivery.pendingOrders = delivery.pendingOrders.filter(
     (pendingOrderId) => pendingOrderId.toString() !== orderId
   );
   delivery.deliveredOrders.push(orderId);
-  // await delivery.save();
+  await delivery.save();
 
   // save online books to user
   const user = await User.findById(order.user);
@@ -199,15 +199,15 @@ const handleMakeOrderCompleted = asyncHandler(async (req, res, next) => {
   const ownerEmail = order.books[0].book.owner.email;
   const ownerStripeAccountId = order.books[0].book.owner.stripeAccountId;
   const ownerFee = calculateOwnerFee(price);
-  const roundedAmount = Math.round(ownerFee * 100);
+  const roundedAmount = Math.round(ownerFee);
 
   const balance = await stripe.balance.retrieve();
   const availableBalance =
     balance.available.find((b) => b.currency === "usd").amount / 100;
 
-  if (availableBalance >= ownerFee) {
+  if (availableBalance >= roundedAmount) {
     await stripe.transfers.create({
-      amount: roundedAmount,
+      amount: roundedAmount * 100,
       currency: "usd",
       destination: ownerStripeAccountId,
     });
