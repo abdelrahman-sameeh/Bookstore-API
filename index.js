@@ -1,7 +1,8 @@
 require("dotenv").config();
 const express = require("express");
-const path = require('path')
+const path = require("path");
 const morgan = require("morgan");
+const cron = require("node-cron");
 
 const connectDB = require("./api/connectDB");
 const httpStatus = require("./utils/httpStatus");
@@ -15,19 +16,19 @@ const cartRouter = require("./routes/cart.routes");
 const orderRouter = require("./routes/order.routes");
 const paymentRouter = require("./routes/payment.routes");
 const webhookRoutes = require("./routes/webhook.routes");
+const { retryFailedRefunds } = require("./controllers/payment.controllers");
 
 const app = express();
 connectDB();
 
 app.use(express.static("./public"));
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-// app.use((req, res, next) => {
-//   res.setTimeout(300000, () => {
-//     res.status(408).send("Request timed out");
-//   });
-//   next();
-// });
+// Schedule the job to run every 5 minutes
+cron.schedule("0 */4 * * *", () => {
+  console.log("Running scheduled job to retry failed refunds");
+  retryFailedRefunds();
+});
 
 if (process.env.MODE == "dev") {
   app.use(morgan("dev"));

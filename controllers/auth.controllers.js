@@ -6,7 +6,9 @@ const { createToken } = require("../utils/createToken");
 const { sendEmail } = require("../utils/sendEmailSetup");
 const jwt = require("jsonwebtoken");
 const Delivery = require("../models/delivery.model");
-const { generateSecureRandomString } = require("../utils/generateSecureRandomString");
+const {
+  generateSecureRandomString,
+} = require("../utils/generateSecureRandomString");
 
 const register = asyncHandler(async (req, res, next) => {
   const existingUser = await User.findOne({ email: req.body.email });
@@ -33,6 +35,7 @@ const register = asyncHandler(async (req, res, next) => {
 
   if (req.body.role == "delivery") {
     const secretKey = generateSecureRandomString();
+
     await sendEmail(
       user.email,
       "Your Secret Key",

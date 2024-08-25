@@ -15,3 +15,7 @@
 (subtract stripe fee from owner) ++++ ----
 (add field in book model [pending, approved, denied]) ++++ ----
 
+(cancel order) ==> {
+    user can cancel his order if order has offline book and order status is inProgress
+    other wise can't cancel order
+}

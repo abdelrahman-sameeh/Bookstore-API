@@ -5,7 +5,10 @@ const { User } = require("../models/user.model");
 const ApiError = require("../utils/ApiError");
 const { createOrderAndUpdateCart } = require("./order.controllers");
 const Transfer = require("../models/transfer.model");
-const { calculateOwnerFee } = require("../utils/calculateFees");
+const {
+  calculateOwnerFee,
+  calculateStripeFee,
+} = require("../utils/calculateFees");
 const { sendEmail } = require("../utils/sendEmailSetup");
 
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
@@ -226,9 +229,59 @@ const payDebtsForOwners = asyncHandler(async (req, res, next) => {
   });
 });
 
+const retryFailedRefunds = async () => {
+  try {
+    // Find failed transfers
+    const failedTransfers = await Transfer.find({
+      status: "failedRefund",
+    }).populate({
+      path: "order",
+      populate: {
+        path: "user",
+        select: "name email",
+      },
+    });
+
+    for (const transfer of failedTransfers) {
+      const balanceTransaction = await stripe.balanceTransactions.retrieve(
+        transfer.balanceTransactionId
+      );
+      const userEmail = transfer.order.user.email;
+      const userName = transfer.order.user.name;
+
+      if (balanceTransaction.status === "available") {
+        // Attempt refund
+        try {
+          await stripe.refunds.create({
+            payment_intent: transfer.paymentIntentId,
+            amount:
+              (transfer.amount - calculateStripeFee(transfer.amount)) * 100,
+          });
+
+          transfer.status = "completed";
+          await transfer.save();
+
+          // Send email to user
+          await sendEmail(
+            userEmail,
+            "Refund Processed Successfully",
+            `Dear ${userName},\n\nThe refund for your order ${transfer.order._id} has been processed successfully.\n\nThank you for your patience.\n\nBest regards,\nYour Company Name`
+          );
+        } catch (refundError) {
+          console.error(
+            `Error retrying refund for order ${transfer.order._id}:`,
+            refundError
+          );
+        }
+      } else continue;
+    }
+  } catch (error) {}
+};
+
 module.exports = {
   onBoarding,
   createCheckoutSession,
   getAvailableBalance,
   payDebtsForOwners,
+  retryFailedRefunds,
 };

@@ -12,10 +12,18 @@ const createBookValidator = [
   check("status")
     .notEmpty()
     .withMessage("status is required")
-    .custom((status) => {
+    .custom((status, { req }) => {
       const statusEnum = ["online", "offline"];
       if (!statusEnum.includes(status)) {
         throw new ApiError("status can be online or offline only", 400);
+      }
+      const image = req.files["image"] ? req.files["image"][0] : null;
+      if (!image) {
+        throw new ApiError("image is required", 400);
+      }
+      const bookFile = req.files["bookFile"] ? req.files["bookFile"][0] : null;
+      if (status == "online" && !bookFile) {
+        throw new ApiError("bookFile is required", 400);
       }
       return true;
     }),
@@ -114,12 +122,12 @@ const reviewBookValidator = [
   check("reviewStatus")
     .notEmpty()
     .withMessage("reviewStatus is required")
-    .custom(async (reviewStatus, {req}) => {
-      const reviews = ["approved", "denied"]
+    .custom(async (reviewStatus, { req }) => {
+      const reviews = ["approved", "denied"];
       if (!reviews.includes(reviewStatus.toLowerCase())) {
         throw new ApiError("review status must be either approved or denied");
       }
-      if(reviewStatus.toLowerCase() == "denied" && !req.body.deniedReason){
+      if (reviewStatus.toLowerCase() == "denied" && !req.body.deniedReason) {
         throw new ApiError("deniedReason is required", 400);
       }
       return true;
