@@ -3,6 +3,10 @@ const express = require("express");
 const path = require("path");
 const morgan = require("morgan");
 const cron = require("node-cron");
+const http = require("http");
+const { Server } = require("socket.io");
+const swaggerUi = require("swagger-ui-express");
+const YAML = require("yamljs");
 
 const connectDB = require("./api/connectDB");
 const httpStatus = require("./utils/httpStatus");
@@ -19,12 +23,21 @@ const webhookRoutes = require("./routes/webhook.routes");
 const { retryFailedRefunds } = require("./controllers/payment.controllers");
 
 const app = express();
+const server = http.createServer(app);
+const io = new Server(server);
+
 connectDB();
 
 app.use(express.static("./public"));
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-// Schedule the job to run every 5 minutes
+
+// Load YAML file
+const swaggerDocument = YAML.load("./swagger.yaml");
+app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+
+
+// Schedule the job to run every 4 hours
 cron.schedule("0 */4 * * *", () => {
   console.log("Running scheduled job to retry failed refunds");
   retryFailedRefunds();
@@ -34,8 +47,8 @@ if (process.env.MODE == "dev") {
   app.use(morgan("dev"));
 }
 
-// global webhook
-// make sure webhook before """app.use(express.json())"""
+// Global webhook
+// Make sure webhook is before """app.use(express.json())"""
 app.use("/api/v1", webhookRoutes);
 
 app.use(express.json());
@@ -67,6 +80,17 @@ app.use((error, req, res, next) => {
 });
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`App listen in port ${PORT}`);
+server.listen(PORT, () => {
+  console.log(`App listening on port ${PORT}`);
+});
+
+// Socket.io setup
+io.on("connection", (socket) => {
+  console.log("A user connected");
+
+  // Handle socket events here
+
+  socket.on("disconnect", () => {
+    console.log("A user disconnected");
+  });
 });

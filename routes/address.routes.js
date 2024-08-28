@@ -19,7 +19,7 @@ router
   .post(isAuth, createAddressValidator, createAddress)
   .get(isAuth, getLoggedUserAddresses);
 
-router.get("/addresses/:userId", isAuth, allowTo("admin"), getUserAddresses);
+router.get("/addresses/user/:userId", isAuth, allowTo("admin"), getUserAddresses);
 
 router
   .route("/address/:id")
