@@ -1,0 +1,687 @@
+openapi: 3.0.0
+info:
+  title: book store
+  version: 1.0.0
+servers:
+  - url: http://localhost:5000
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    noauthAuth:
+      type: http
+      scheme: noauth
+tags:
+  - name: Auth
+  - name: Categories
+  - name: Addresses
+  - name: Coupon
+  - name: Cart
+  - name: Order
+  - name: Stripe
+  - name: Books
+paths:
+  /api/v1/register:
+    post:
+      tags:
+        - Auth
+      summary: register
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              example:
+                name: abdelrahman sameeh
+                email: abdelrahman.sameeh507@gmail.com
+                password: '0000'
+                role: user
+      responses:
+        '201':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/v1/login:
+    post:
+      tags:
+        - Auth
+      summary: login
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              example:
+                email: "sehovac209@inpsur.com"
+                password: "0000"
+                
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/v1/resetCode:
+    post:
+      tags:
+        - Auth
+      summary: send reset code
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              example:
+                email: demibak836@padvn.com
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/v1/forgetPassword:
+    post:
+      tags:
+        - Auth
+      summary: forget password
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              example:
+                email: demibak836@padvn.com
+                code: '889647'
+                password: '1111'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/v1/changePassword:
+    post:
+      tags:
+        - Auth
+      summary: change password
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              example:
+                password: '1111'
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/v1/category:
+    get:
+      tags:
+        - Categories
+      summary: list create category
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/v1/category/{id}:
+    put:
+      tags:
+        - Categories
+      summary: retrieve update delete category
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the category
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              example:
+                name: CAST
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/v1/addresses:
+    post:
+      tags:
+        - Addresses
+      summary: create address
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              example:
+                country: EgyPT
+                city: MENOfia
+                address: قريه الماى مركز شبين الكوم
+                phone: '01556577857'
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+    get:
+      tags:
+        - Addresses
+      summary: get logged user addresses
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/v1/addresses/user/{userId}:
+    get:
+      tags:
+        - Addresses
+      summary: (admin) get user addresses
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the user
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/v1/address/{addressId}:
+    put:
+      tags:
+        - Addresses
+      summary: update delete address
+      parameters:
+        - name: addressId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the address
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              example: ''
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/v1/coupons:
+    post:
+      tags:
+        - Coupon
+      summary: create coupon
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              example:
+                code: special
+                discount: '20'
+                expiryDate: '2024-12-15'
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+    get:
+      tags:
+        - Coupon
+      summary: get list of coupons
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/v1/coupon/{couponId}:
+    get:
+      tags:
+        - Coupon
+      summary: get update and delete one coupon
+      parameters:
+        - name: couponId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the coupon
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/v1/cart:
+    post:
+      tags:
+        - Cart
+      summary: add book to cart
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              example:
+                    book: "66ca882fa2addaee8e526315"
+                    count: 5
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+    delete:
+      tags:
+        - Cart
+      summary: delete cart
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              example:
+                    cartId: "66ca882fa2addaee8e526315"
+
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+    get:
+      tags:
+        - Cart
+      summary: get logged user carts
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/v1/cart/book/{bookId}:
+    delete:
+      tags:
+        - Cart
+      summary: delete book from cart
+      parameters:
+        - name: bookId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the book in cart
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/v1/purchase:
+    post:
+      tags:
+        - Order
+      summary: complete order
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              example:
+                paymentType: "offline"
+                paymentType: online
+                cartId: "66cad995bcea408a3c2eb76b"
+                addressId: "66ca8cf294d7b4291c607712"
+                # // ---- make sure coupon belong to owner (الكوبون بتاع التاجر)
+                couponCode: "special"
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/v1/updateOrderStatus:
+    put:
+      tags:
+        - Order
+      summary: make order inDilevery status
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              example:
+                orderId: 66cad9a7bcea408a3c2eb77a
+                deliveryId: 66ca850bfe6eae77f36d0d17
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/v1/makeOrderCompleted/{orderId}/delivery/{deliverySecretKey}:
+    get:
+      tags:
+        - Order
+      summary: update order status to be completed
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the order
+        - name: deliverySecretKey
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The secret key of user delivery
+        
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/v1/orders/{orderId}:
+    patch:
+      tags:
+        - Order
+      summary: cancel order
+      parameters:
+        - name: orderId
+          in: true
+          required: true
+          description: The order id
+
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              example:
+                status: cancelled
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/v1/stripe/onboard:
+    post:
+      tags:
+        - Stripe
+      summary: onboarding
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              example: https://secureLink.com
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/v1/stripe/payDebts:
+    post:
+      tags:
+        - Stripe
+      summary: pay debts (سداد الديون الى التجار)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/v1/available-balance:
+    get:
+      tags:
+        - Stripe
+      summary: get balance
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/v1/books:
+    post:
+      tags:
+        - Books
+      summary: create book
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                image:
+                  type: string
+                  format: binary
+                bookFile:
+                  type: string
+                  format: binary
+                author:
+                  type: string
+                  example: احمد مراد
+                category:
+                  type: string
+                  example: 66c58fc56d8bf62adf801145
+                price:
+                  type: integer
+                  example: '300'
+                status:
+                  type: string
+                  example: online
+                title:
+                  type: string
+                  example: dont look back
+                count:
+                  type: integer
+                  example: '250'
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+    get:
+      tags:
+        - Books
+      summary: get books (for every one)
+      security:
+        - noauthAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/v1/books/{bookId}:
+    get:
+      tags:
+        - Books
+      summary: get one book
+      parameters:
+        - name: bookId
+          in: true
+          required: true
+          example: 66ca882fa2addaee8e526315
+          description: The book id
+
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+
+    put:
+      tags:
+        - Books
+      summary: update book
+      parameters:
+        - name: bookId
+          in: true
+          required: true
+          example: 66ca882fa2addaee8e526315
+          description: The book id
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+      
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                image:
+                  type: string
+                  format: binary
+                bookFile:
+                  type: string
+                  format: binary
+                author:
+                  type: string
+                  example: Isac Nelson
+                category:
+                  type: string
+                  example: 669ff5372349ba153897573a
+                price:
+                  type: integer
+                  example: '2000'
+                status:
+                  type: string
+                  example: offline
+                title:
+                  type: string
+                  example: test
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+
+    delete:
+      tags:
+        - Books
+      summary: delete book
+      parameters:
+        - name: bookId
+          in: true
+          required: true
+          example: 66ca882fa2addaee8e526315
+          description: The book id
+      responses:
+        '204':
+          description: Successful response
+          content:
+            application/json: {}
+
+  /api/v1/admin/books:
+    get:
+      tags:
+        - Books
+      summary: get books (for admin)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/v1/owner/books:
+    get:
+      tags:
+        - Books
+      summary: get books (for owners)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/v1/books/{bookId}/reviewBook:
+    patch:
+      tags:
+        - Books
+      summary: review book (admin)
+      parameters:
+        - name: bookId
+          required: true
+          description: do review for book
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              example: 
+                    reviewStatus: "approved"
+                    # reviewStatus: "denied"
+                    # deniedReason: "book cover not valid"
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
