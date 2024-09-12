@@ -73,6 +73,7 @@ const login = asyncHandler(async (req, res, next) => {
     _id: user._id,
     name: user.name,
     email: user.email,
+    role: user.role
   };
 
   // generate token
@@ -159,6 +160,22 @@ const changePassword = asyncHandler(async (req, res, next) => {
   });
 });
 
+const getLoggedUser = asyncHandler(async (req, res, next) => {
+  const user = await User.findById(req.user._id);
+
+  let payload = {
+    _id: user._id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+  };
+
+  return res.status(200).json({
+    status: "success",
+    data: { user: payload },
+  });
+});
+
 const isAuth = asyncHandler(async (req, res, next) => {
   const authorization = req.headers.authorization || req.headers.Authorization;
 
@@ -213,4 +230,5 @@ module.exports = {
   changePassword,
   isAuth,
   allowTo,
+  getLoggedUser,
 };
