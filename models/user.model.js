@@ -22,13 +22,6 @@ const userSchema = new mongoose.Schema(
       ref: "Cart",
       required: false,
     },
-    addresses: [
-      {
-        type: mongoose.Types.ObjectId,
-        ref: "Address",
-        required: true,
-      },
-    ],
     onlineBooks: [
       {
         type: mongoose.Types.ObjectId,

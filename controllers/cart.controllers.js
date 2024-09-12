@@ -68,7 +68,11 @@ exports.addToCart = asyncHandler(async (req, res, next) => {
         cart.books[existingBookIndex].count += count;
       }
     } else {
-      cart.books.push({ book, count });
+      if (+count > bookDoc.count) {
+        return next(new ApiError("book count is not available", 400));
+      }else{
+        cart.books.push({ book, count });
+      }
     }
 
     cart.totalItems = cart.books.reduce((acc, item) => acc + item.count, 0);

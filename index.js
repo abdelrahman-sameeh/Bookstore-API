@@ -21,6 +21,7 @@ const orderRouter = require("./routes/order.routes");
 const paymentRouter = require("./routes/payment.routes");
 const webhookRoutes = require("./routes/webhook.routes");
 const { retryFailedRefunds } = require("./controllers/payment.controllers");
+const cors = require("cors");
 
 const app = express();
 const server = http.createServer(app);
@@ -31,11 +32,12 @@ connectDB();
 app.use(express.static("./public"));
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
+app.use(cors({}));
+
 
 // Load YAML file
 const swaggerDocument = YAML.load("./swagger.yaml");
-app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
-
+app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 // Schedule the job to run every 4 hours
 cron.schedule("0 */4 * * *", () => {
