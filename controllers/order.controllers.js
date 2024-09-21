@@ -108,6 +108,10 @@ const createOrderAndUpdateCart = async (
         $inc: { count: -item.count },
       });
     }
+    // increment sales number 
+    await Book.findByIdAndUpdate(item.book._id, {
+      $inc: { sales: item.count },
+    });
   }
 
   // Save the updated user
@@ -259,6 +263,11 @@ const cancelOrder = asyncHandler(async (req, res, next) => {
 
   // if have offline book update stock
   for (const item of order.books) {
+    // decrement sales number of book
+    await Book.findByIdAndUpdate(item.book._id, {
+      $inc: { sales: -item.count },
+    });
+    // update offline books
     if (item.book["status"] == "offline") {
       await Book.findByIdAndUpdate(item.book._id, {
         $inc: { count: item.count },
