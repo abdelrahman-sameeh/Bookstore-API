@@ -10,6 +10,7 @@ const {
   calculateStripeFee,
 } = require("../utils/calculateFees");
 const { sendEmail } = require("../utils/sendEmailSetup");
+const path = require("path");
 
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 
@@ -46,12 +47,15 @@ const onBoarding = asyncHandler(async (req, res) => {
     account = await stripe.accounts.retrieve(user.stripeAccountId);
   }
 
+  // return url
+  const url = new URL(
+    path.join(process.env.FRONTEND_URL, "dashboard", "owner", "onboarding")
+  );
   // Generate the account link
   const accountLink = await stripe.accountLinks.create({
     account: account.id,
-    refresh_url: "https://your-website.com/refresh",
-    // **** will update it ****
-    return_url: "https://your-website.com/return",
+    refresh_url: url.href,
+    return_url: url.href,
     type: "account_onboarding",
   });
 

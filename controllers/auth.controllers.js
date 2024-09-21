@@ -73,7 +73,10 @@ const login = asyncHandler(async (req, res, next) => {
     _id: user._id,
     name: user.name,
     email: user.email,
-    role: user.role
+    role: user.role,
+    picture: user.picture || null,
+    stripeAccountId: user.stripeAccountId || null,
+    completedBoarding: user.completedBoarding || null,
   };
 
   // generate token
@@ -168,6 +171,9 @@ const getLoggedUser = asyncHandler(async (req, res, next) => {
     name: user.name,
     email: user.email,
     role: user.role,
+    picture: user.picture,
+    stripeAccountId: user.stripeAccountId,
+    completedBoarding: user.completedBoarding,
   };
 
   return res.status(200).json({

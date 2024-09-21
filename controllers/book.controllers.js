@@ -1,20 +1,42 @@
 const asyncHandler = require("../middlewares/asyncHandler");
 const Book = require("../models/book.model");
+const Order = require("../models/order.model");
 const ApiError = require("../utils/ApiError");
 const Pagination = require("../utils/Pagination");
 const { sendEmail } = require("../utils/sendEmailSetup");
 
+const validateSortOrder = (value, field) => {
+  if (value !== "asc" && value !== "desc") {
+    throw new ApiError(`"${field}" value must be "asc" or "desc"`);
+  }
+  return value === "asc" ? 1 : -1;
+};
+
 const getBooks = asyncHandler(async (req, res, next) => {
-  const { search, page, limit } = req.query;
+  const { search, page, limit, categories, minPrice, maxPrice, price, sold } =
+    req.query;
   const { role, _id: userId } = req.user || {};
   let query = {};
+
+  const populate = [{field: 'category', select: 'name'}]
 
   if (!role) {
     // for only users
     query.reviewStatus = "approved";
+    populate.push({field: "owner", select: "name email"})
   } else if (role === "owner") {
     // for owner
     query.owner = userId;
+  }
+
+  if (categories) {
+    query.category = { $in: categories.split(",") };
+  }
+
+  if (minPrice || maxPrice) {
+    query.price = {};
+    if (minPrice) query.price.$gte = minPrice;
+    if (maxPrice) query.price.$lte = maxPrice;
   }
 
   if (search) {
@@ -24,7 +46,16 @@ const getBooks = asyncHandler(async (req, res, next) => {
     ];
   }
 
-  const paginator = new Pagination("books", Book, query, page, limit);
+  let sort = {};
+  if (price) {
+    sort.price = validateSortOrder(price, "price");
+  }
+  if (sold) {
+    sort.sales = validateSortOrder(sold, "sold");
+  }
+
+
+  const paginator = new Pagination("books", Book, query, page, limit, sort, populate);
   const result = await paginator.paginate();
 
   res.status(200).json(result);
@@ -74,15 +105,46 @@ const updateBook = asyncHandler(async (req, res, next) => {
     req.body.book = image.path;
   }
 
-  const book = await Book.findByIdAndUpdate(req.params.id, req.body, {
+  let book = await Book.findById(req.params.id);
+
+  if (req.body.count && book.count > +req.body.count) {
+    const ordersCount = await _getOrdersCount(book._id);
+    if (ordersCount > +req.body.count) {
+      return next(new ApiError("number of orders exceeds book count", 400));
+    }
+  }
+
+  const updatedBook = await Book.findByIdAndUpdate(req.params.id, req.body, {
     new: true,
   });
-  res.status(200).json({ status: "success", data: { book } });
+
+  res.status(200).json({ status: "success", data: { book: updatedBook } });
 });
+
+// Helper function to count orders containing a specific book
+async function _getOrdersCount(bookId) {
+  const orders = await Order.find({
+    status: { $in: ["pending", "inProgress"] },
+    "books.book": bookId,
+  });
+
+  let totalCount = 0;
+  for (const order of orders) {
+    for (const item of order.books) {
+      if (item.book.toString() === bookId.toString()) {
+        totalCount += item.count;
+        break;
+      }
+    }
+  }
+  return totalCount;
+}
+
+
 
 const deleteOneBook = asyncHandler(async (req, res, next) => {
   await Book.findByIdAndDelete(req.params.id);
-  res.status(204).json();
+  res.status(204).send();
 });
 
 const reviewBook = asyncHandler(async (req, res, next) => {

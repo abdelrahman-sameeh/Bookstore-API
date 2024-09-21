@@ -1,5 +1,6 @@
 {
-    "watch": ["src/**/*.js", "docs/**/*.yaml"],
-    "ext": "js,yaml",
-    "exec": "node index.js"
+    "watch": ["./**/*.js", "docs/**/*.yaml"],
+    "ext": "js,yaml,json",
+    "exec": "node index.js",
+    "ignore": ["./node_modules"]
 }

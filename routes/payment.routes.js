@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const { isAuth } = require("../controllers/auth.controllers");
+const { isAuth, allowTo } = require("../controllers/auth.controllers");
 const {
   onBoarding,
   createCheckoutSession,
@@ -25,7 +25,7 @@ router.post(
 router.get(
   "/available-balance",
   isAuth,
-  // allowTo("admin"),
+  allowTo("admin"),
   getAvailableBalance
 );
 
@@ -33,7 +33,7 @@ router.get(
 router.post(
   "/stripe/payDebts",
   isAuth,
-  // allowTo("admin"),
+  allowTo("admin"),
   payDebtsForOwners
 );
 
