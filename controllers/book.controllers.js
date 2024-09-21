@@ -5,7 +5,7 @@ const ApiError = require("../utils/ApiError");
 const Pagination = require("../utils/Pagination");
 const { sendEmail } = require("../utils/sendEmailSetup");
 
-const validateSortOrder = (value, field) => {
+const _validateSortOrder = (value, field) => {
   if (value !== "asc" && value !== "desc") {
     throw new ApiError(`"${field}" value must be "asc" or "desc"`);
   }
@@ -48,10 +48,10 @@ const getBooks = asyncHandler(async (req, res, next) => {
 
   let sort = {};
   if (price) {
-    sort.price = validateSortOrder(price, "price");
+    sort.price = _validateSortOrder(price, "price");
   }
   if (sold) {
-    sort.sales = validateSortOrder(sold, "sold");
+    sort.sales = _validateSortOrder(sold, "sold");
   }
 
 
