@@ -1,4 +1,5 @@
 const { default: mongoose } = require("mongoose");
+const baseUrl = process.env.BASE_URL || "http://localhost:5000";
 
 const bookSchema = new mongoose.Schema(
   {
@@ -37,16 +38,23 @@ const bookSchema = new mongoose.Schema(
 );
 
 bookSchema.post(/^find/, function (docs) {
-  const baseUrl = process.env.BASE_URL || "http://localhost:5000";
   if (docs.length) {
     docs.forEach((doc) => {
       if (doc.imageCover) {
         doc.imageCover = `${baseUrl}/${doc.imageCover}`;
       }
     });
+    docs.forEach((doc) => {
+      if (doc.book) {
+        doc.book = `${baseUrl}/${doc.book}`;
+      }
+    });
   } else {
     if (docs.imageCover) {
       docs.imageCover = `${baseUrl}/${docs.imageCover}`;
+    }
+    if (docs.book) {
+      docs.book = `${baseUrl}/${docs.book}`;
     }
   }
 });

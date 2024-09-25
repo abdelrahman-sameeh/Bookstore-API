@@ -52,7 +52,7 @@ router
   )
   .delete(
     isAuth,
-    allowTo("owner", "admin"),
+    allowTo("owner"),
     deleteBookValidator,
     deleteOneBook
   );

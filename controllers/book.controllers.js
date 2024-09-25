@@ -4,6 +4,7 @@ const Order = require("../models/order.model");
 const ApiError = require("../utils/ApiError");
 const Pagination = require("../utils/Pagination");
 const { sendEmail } = require("../utils/sendEmailSetup");
+const baseUrl = process.env.BASE_URL || "http://localhost:3000";
 
 const _validateSortOrder = (value, field) => {
   if (value !== "asc" && value !== "desc") {
@@ -18,12 +19,12 @@ const getBooks = asyncHandler(async (req, res, next) => {
   const { role, _id: userId } = req.user || {};
   let query = {};
 
-  const populate = [{field: 'category', select: 'name'}]
+  const populate = [{ field: "category", select: "name" }];
 
   if (!role) {
     // for only users
     query.reviewStatus = "approved";
-    populate.push({field: "owner", select: "name email"})
+    populate.push({ field: "owner", select: "name email" });
   } else if (role === "owner") {
     // for owner
     query.owner = userId;
@@ -54,8 +55,15 @@ const getBooks = asyncHandler(async (req, res, next) => {
     sort.sales = _validateSortOrder(sold, "sold");
   }
 
-
-  const paginator = new Pagination("books", Book, query, page, limit, sort, populate);
+  const paginator = new Pagination(
+    "books",
+    Book,
+    query,
+    page,
+    limit,
+    sort,
+    populate
+  );
   const result = await paginator.paginate();
 
   res.status(200).json(result);
@@ -78,8 +86,20 @@ const createBook = asyncHandler(async (req, res, next) => {
   }
   req.body.owner = req.user._id;
 
-  const book = await Book.create(req.body);
-  res.status(201).json({ status: "success", data: { book } });
+
+  let newBook = await Book.create(req.body);
+  newBook = await newBook.populate("category")
+  
+  if (process.env.MODE === "dev") {
+    if (newBook.book) {
+      newBook.book = `${baseUrl}/${newBook.book}`;
+    }
+    if (newBook.imageCover) {
+      newBook.imageCover = `${baseUrl}/${newBook.imageCover}`;
+    }
+  }
+
+  res.status(201).json({ status: "success", data: { book: newBook } });
 });
 
 const getOneBook = asyncHandler(async (req, res, next) => {
@@ -102,7 +122,7 @@ const updateBook = asyncHandler(async (req, res, next) => {
     req.body.imageCover = image.path;
   }
   if (bookFile && process.env.MODE == "dev") {
-    req.body.book = image.path;
+    req.body.book = bookFile.path;
   }
 
   let book = await Book.findById(req.params.id);
@@ -114,9 +134,13 @@ const updateBook = asyncHandler(async (req, res, next) => {
     }
   }
 
+  if (req.body.status && req.body.status == "offline") {
+    req.body.book = "";
+  }
+
   const updatedBook = await Book.findByIdAndUpdate(req.params.id, req.body, {
     new: true,
-  });
+  }).populate("category");
 
   res.status(200).json({ status: "success", data: { book: updatedBook } });
 });
@@ -139,8 +163,6 @@ async function _getOrdersCount(bookId) {
   }
   return totalCount;
 }
-
-
 
 const deleteOneBook = asyncHandler(async (req, res, next) => {
   await Book.findByIdAndDelete(req.params.id);

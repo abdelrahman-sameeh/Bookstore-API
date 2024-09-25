@@ -58,9 +58,12 @@ const updateBookValidator = [
     .isMongoId()
     .withMessage("invalid book id")
     .custom(async (id, { req }) => {
-      const book = await Book.findOne({ _id: id, owner: req.user._id });
-      if (!book) {
-        throw new ApiError("You are not the owner of this book");
+      const book = await Book.findOne({ _id: id });
+      if(!book){
+        throw new ApiError("book not found");
+      }
+      if (book.owner.toString() != req.user._id.toString()) {
+        throw new ApiError("you are not the owner for this book");
       }
       return true;
     }),
@@ -102,14 +105,11 @@ const deleteBookValidator = [
     .isMongoId()
     .withMessage("invalid book id")
     .custom(async (id, { req }) => {
-      const book =
-        req.user.role == "owner"
-          ? await Book.findOne({
-              _id: id,
-              owner: req.user._id,
-            })
-          : await Book.findById(id);
-      if (!book) {
+      const book = await Book.findById(id)
+      if(!book){
+        throw new ApiError("book not found");
+      }
+      if(req.user._id.toString() !== book.owner.toString()){
         throw new ApiError("You are not the owner of this book");
       }
       return true;
