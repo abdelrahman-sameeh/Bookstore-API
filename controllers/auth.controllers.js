@@ -152,8 +152,8 @@ const forgetPassword = asyncHandler(async (req, res, next) => {
 
 const changePassword = asyncHandler(async (req, res, next) => {
   const { password } = req.body;
-  const user = User.findById(req.user._id);
-  const hashed = bcrypt.hash(password, 10);
+  const user = await User.findById(req.user._id);
+  const hashed = await bcrypt.hash(password, 10);
   user.password = hashed;
   await user.save();
 
