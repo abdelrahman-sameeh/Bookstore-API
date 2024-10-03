@@ -29,8 +29,12 @@ const updateCategory = asyncHandler(async (req, res, next) => {
   if(req.body.name){
     data.name = req.body.name.toLowerCase()
   }
+  let category = await Category.findOne({ name: req.body.name.toLowerCase() });
+  if (category) {
+    return next(new ApiError("category already exist", 400));
+  }
 
-  let category = await Category.findByIdAndUpdate(req.params.id, data, {
+  category = await Category.findByIdAndUpdate(req.params.id, data, {
     new: true,
   });
   if (!category) {
