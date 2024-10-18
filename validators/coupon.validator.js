@@ -83,10 +83,12 @@ exports.updateOneCouponValidator = [
     .isLength({ min: 1 })
     .withMessage("code must be at least 1 character long")
     .trim()
-    .custom(async (value) => {
+    .custom(async (value, {req}) => {
       if (value.trim() === "") {
         throw new ApiError("code cannot be an empty string", 400);
       }
+      const coupon = await Coupon.findOne({ code: value, owner: req.user._id });
+      if (coupon) throw new ApiError("this coupon already exist", 400);
       return true;
     }),
   check("discount")
