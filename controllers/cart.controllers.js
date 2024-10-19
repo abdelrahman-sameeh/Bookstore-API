@@ -4,7 +4,15 @@ const Cart = require("../models/cart.model");
 const ApiError = require("../utils/ApiError");
 
 exports.getLoggedUserCarts = asyncHandler(async (req, res, next) => {
-  const carts = await Cart.find({ user: req.user._id });
+  const carts = await Cart.find({ user: req.user._id })
+    .populate({ path: "ownerId", select: "name email picture" })
+    .populate({
+      path: "books.book",
+      populate: {
+        path: "category",
+        select: "name",
+      },
+    });
   if (!carts.length) {
     return next(new ApiError("cart not found", 404));
   }
@@ -70,7 +78,7 @@ exports.addToCart = asyncHandler(async (req, res, next) => {
     } else {
       if (+count > bookDoc.count) {
         return next(new ApiError("book count is not available", 400));
-      }else{
+      } else {
         cart.books.push({ book, count });
       }
     }
@@ -128,6 +136,11 @@ exports.deleteBookFromCart = asyncHandler(async (req, res, next) => {
   // Recalculate totalItems and totalPrice
   cart.totalItems = cart.books.reduce((acc, item) => acc + item.count, 0);
 
+  if (cart.totalItems === 0) {
+    await cart.deleteOne();
+    return res.status(204).json({});
+  }
+
   const totalPrices = await Promise.all(
     cart.books.map(async (item) => {
       const bookDoc = await Book.findById(item.book);
@@ -139,7 +152,6 @@ exports.deleteBookFromCart = asyncHandler(async (req, res, next) => {
   );
 
   cart.totalPrice = totalPrices.reduce((acc, price) => acc + price, 0);
-
   await cart.save();
 
   res.status(200).json({ status: "success", data: { cart } });

@@ -33,11 +33,26 @@ const cartSchema = new mongoose.Schema(
     },
     ownerId: {
       type: mongoose.Types.ObjectId,
-      ref: 'User'
-    }
+      ref: "User",
+    },
   },
   { timestamps: true }
 );
+
+cartSchema.post("save", async function (doc) {
+  await doc.populate({
+    path: "ownerId",
+    select: "name email",
+  });
+
+  await doc.populate({
+    path: "books.book",
+    populate: {
+      path: "category",
+      select: "name",
+    },
+  });
+});
 
 const Cart = mongoose.model("Cart", cartSchema);
 
