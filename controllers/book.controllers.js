@@ -14,7 +14,7 @@ const _validateSortOrder = (value, field) => {
 };
 
 const getBooks = asyncHandler(async (req, res, next) => {
-  const { search, page, limit, categories, minPrice, maxPrice, price, sold } =
+  const { search, page, limit, categories, minPrice, maxPrice, price, sales } =
     req.query;
   const { role, _id: userId } = req.user || {};
   let query = {};
@@ -51,8 +51,8 @@ const getBooks = asyncHandler(async (req, res, next) => {
   if (price) {
     sort.price = _validateSortOrder(price, "price");
   }
-  if (sold) {
-    sort.sales = _validateSortOrder(sold, "sold");
+  if (sales) {
+    sort.sales = _validateSortOrder(sales, "sales");
   }
 
   const paginator = new Pagination(
