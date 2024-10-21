@@ -108,7 +108,7 @@ const createOrderAndUpdateCart = async (
         $inc: { count: -item.count },
       });
     }
-    // increment sales number 
+    // increment sales number
     await Book.findByIdAndUpdate(item.book._id, {
       $inc: { sales: item.count },
     });
@@ -329,9 +329,35 @@ const cancelOrder = asyncHandler(async (req, res, next) => {
     .json({ status: "success", message: "order cancelled successfully" });
 });
 
+const getUserOrders = asyncHandler(async (req, res, next) => {
+  const orders = await Order.find({ user: req.user._id }).populate({
+    path: "books.book",
+    select: "-book",
+    populate: {
+      path: "category",
+      select: "name",
+    },
+  })
+  return res.status(200).json({ status: "success", data: { orders } });
+});
+
+const deleteUserOrders = asyncHandler(async(req, res, next) => {
+  const {orders} = req.body
+  if (!Array.isArray(orders) || orders.length === 0) {
+    return next(new ApiError("No orders provided for deletion.", 400)) 
+  }
+  for (const orderId of orders) {
+    await Order.findByIdAndDelete(orderId);
+  }
+  return res.status(200).json({ message: "Orders deleted successfully!" });
+})
+
+
 module.exports = {
   makeOrderInDelivery,
   createOrderAndUpdateCart,
   handleMakeOrderCompleted,
   cancelOrder,
+  getUserOrders,
+  deleteUserOrders
 };

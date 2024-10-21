@@ -4,19 +4,26 @@ const {
   makeOrderInDelivery,
   handleMakeOrderCompleted,
   cancelOrder,
+  getUserOrders,
+  deleteUserOrders,
 } = require("../controllers/order.controllers");
 const {
   updateOrderStatusValidator,
   handleMakeOrderCompletedValidator,
   cancelOrderValidation,
 } = require("../validators/order.validator");
-const { retryFailedRefunds } = require("../controllers/payment.controllers");
 const router = express.Router();
+
+
+router.route('/orders')
+.get( isAuth, allowTo('user'), getUserOrders)
+.delete(isAuth, allowTo('user'), deleteUserOrders)
+
 
 router.put(
   "/updateOrderStatus",
   isAuth,
-  // allowTo("admin"),
+  allowTo("admin"),
   updateOrderStatusValidator,
   makeOrderInDelivery
 );
@@ -28,5 +35,7 @@ router.get(
 );
 
 router.patch("/orders/:id", isAuth, cancelOrderValidation, cancelOrder)
+
+
 
 module.exports = router;
