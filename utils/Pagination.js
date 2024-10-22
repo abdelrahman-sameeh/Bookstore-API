@@ -17,9 +17,11 @@ class Pagination {
       .skip(this.skip)
       .limit(this.limit)
 
-    if(this.populate.length){
+    if(this.populate && this.populate.length){
       const pop = this.populate.map(pop => ([{path: pop.field, select: pop.select}]))
       results.populate(pop)
+    }else{
+      results.populate(this.populate)
     }
 
     results = await results

@@ -5,16 +5,19 @@ const Delivery = require("../models/delivery.model");
 const ApiError = require("../utils/ApiError");
 
 exports.updateOrderStatusValidator = [
-  check("orderId")
-    .isMongoId()
-    .withMessage("invalid order id")
-    .custom(async (orderId) => {
-      const order = await Order.findById(orderId);
-      if (!order) {
-        throw new ApiError("order not found", 404);
+  check("ordersIds")
+    .isArray()
+    .withMessage("orderIds must be an array")
+    .custom(async (orderIds) => {
+      const orders = await Order.find({ _id: { $in: orderIds } });
+      if (orders.length === 0) {
+        throw new ApiError("No orders found", 404);
       }
-      if (order.status != "inProgress") {
-        throw new ApiError("order status must be inProgress", 400);
+
+      for (const order of orders) {
+        if (!["inProgress", "pending"].includes(order.status)) {
+          throw new ApiError(`order status must be pending or inProgress`, 400);
+        }
       }
       return true;
     }),
@@ -67,7 +70,7 @@ exports.cancelOrderValidation = [
       if (req.user._id.toString() != order.user._id.toString()) {
         throw new ApiError(`this order does not belong to you`, 403);
       }
-      req.order = order
+      req.order = order;
       return true;
     }),
   validatorMiddleware,

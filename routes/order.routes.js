@@ -1,11 +1,12 @@
 const express = require("express");
 const { isAuth, allowTo } = require("../controllers/auth.controllers");
 const {
-  makeOrderInDelivery,
+  makeOrdersInDelivery,
   handleMakeOrderCompleted,
   cancelOrder,
   getUserOrders,
   deleteUserOrders,
+  getAdminOrders,
 } = require("../controllers/order.controllers");
 const {
   updateOrderStatusValidator,
@@ -14,10 +15,15 @@ const {
 } = require("../validators/order.validator");
 const router = express.Router();
 
+router
+  .route("/user/orders")
+  .get(isAuth, allowTo("user"), getUserOrders)
+  .delete(isAuth, allowTo("user"), deleteUserOrders);
 
-router.route('/orders')
-.get( isAuth, allowTo('user'), getUserOrders)
-.delete(isAuth, allowTo('user'), deleteUserOrders)
+
+router
+  .route("/admin/orders")
+  .get(isAuth, allowTo("admin"), getAdminOrders)
 
 
 router.put(
@@ -25,7 +31,7 @@ router.put(
   isAuth,
   allowTo("admin"),
   updateOrderStatusValidator,
-  makeOrderInDelivery
+  makeOrdersInDelivery
 );
 
 router.get(
@@ -34,8 +40,6 @@ router.get(
   handleMakeOrderCompleted
 );
 
-router.patch("/orders/:id", isAuth, cancelOrderValidation, cancelOrder)
-
-
+router.patch("/orders/:id", isAuth, cancelOrderValidation, cancelOrder);
 
 module.exports = router;

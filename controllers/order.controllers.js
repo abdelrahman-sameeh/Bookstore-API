@@ -17,6 +17,7 @@ const {
   calculateOwnerFee,
   calculateStripeFee,
 } = require("../utils/calculateFees");
+const Pagination = require("../utils/Pagination");
 
 const cloudinary = require("cloudinary").v2;
 
@@ -124,23 +125,24 @@ const createOrderAndUpdateCart = async (
   return order;
 };
 
-const makeOrderInDelivery = asyncHandler(async (req, res, next) => {
-  const { orderId, deliveryId } = req.body;
+const makeOrdersInDelivery = asyncHandler(async (req, res, next) => {
+  const { ordersIds, deliveryId } = req.body;
 
   await Delivery.findByIdAndUpdate(
     deliveryId,
     {
-      $addToSet: { pendingOrders: orderId },
+      $addToSet: { pendingOrders: { $each: ordersIds } },
     },
     { new: true }
   );
 
-  const order = await Order.findByIdAndUpdate(
-    orderId,
+  await Order.updateMany(
+    { _id: { $in: ordersIds } },
     { status: "inDelivery" },
     { new: true }
   );
-  return res.status(200).json({ status: "success", data: { order } });
+
+  return res.status(200).json({ status: "success" });
 });
 
 const handleMakeOrderCompleted = asyncHandler(async (req, res, next) => {
@@ -337,27 +339,57 @@ const getUserOrders = asyncHandler(async (req, res, next) => {
       path: "category",
       select: "name",
     },
-  })
+  });
   return res.status(200).json({ status: "success", data: { orders } });
 });
 
-const deleteUserOrders = asyncHandler(async(req, res, next) => {
-  const {orders} = req.body
+const deleteUserOrders = asyncHandler(async (req, res, next) => {
+  const { orders } = req.body;
   if (!Array.isArray(orders) || orders.length === 0) {
-    return next(new ApiError("No orders provided for deletion.", 400)) 
+    return next(new ApiError("No orders provided for deletion.", 400));
   }
   for (const orderId of orders) {
     await Order.findByIdAndDelete(orderId);
   }
   return res.status(200).json({ message: "Orders deleted successfully!" });
-})
+});
 
+const getAdminOrders = asyncHandler(async (req, res, next) => {
+  const { page, limit, status } = req.query;
+  let query = {};
+  if (status) {
+    query.status = status;
+  }
+
+  const populate = {
+    path: "books.book",
+    select: "-book",
+    populate: {
+      path: "category",
+      select: "name",
+    },
+  };
+
+  const paginator = new Pagination(
+    "orders",
+    Order,
+    query,
+    page,
+    limit,
+    "",
+    populate
+  );
+
+  const results = await paginator.paginate();
+  res.status(200).json(results);
+});
 
 module.exports = {
-  makeOrderInDelivery,
+  makeOrdersInDelivery,
   createOrderAndUpdateCart,
   handleMakeOrderCompleted,
   cancelOrder,
   getUserOrders,
-  deleteUserOrders
+  deleteUserOrders,
+  getAdminOrders,
 };
