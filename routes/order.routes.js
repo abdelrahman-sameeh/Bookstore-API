@@ -2,7 +2,7 @@ const express = require("express");
 const { isAuth, allowTo } = require("../controllers/auth.controllers");
 const {
   makeOrdersInDelivery,
-  handleMakeOrderCompleted,
+  handleMakeOrdersCompleted,
   cancelOrder,
   getUserOrders,
   deleteUserOrders,
@@ -35,9 +35,16 @@ router.put(
 );
 
 router.get(
-  "/makeOrderCompleted/:orderId/delivery/:deliverySecretKey",
+  "/orders/:orderId/delivery/:deliverySecretKey",
   handleMakeOrderCompletedValidator,
-  handleMakeOrderCompleted
+  handleMakeOrdersCompleted
+);
+
+router.post(
+  "/makeOrdersCompleted",
+  isAuth,
+  allowTo('delivery'),
+  handleMakeOrdersCompleted
 );
 
 router.patch("/orders/:id", isAuth, cancelOrderValidation, cancelOrder);

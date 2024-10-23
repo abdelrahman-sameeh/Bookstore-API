@@ -215,7 +215,7 @@ const isAuth = asyncHandler(async (req, res, next) => {
 const allowTo =
   (...roles) =>
   (req, res, next) => {
-    const rolesEnum = ["user", "admin", "owner"];
+    const rolesEnum = ["user", "admin", "owner", "delivery"];
     for (const role of roles) {
       if (!rolesEnum.includes(role)) {
         return next(new ApiError(`invalid role ${role}`, 404));

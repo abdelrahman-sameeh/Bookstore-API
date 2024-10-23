@@ -45,7 +45,7 @@ const generateQRCode = async (orderId) => {
     // Ensure the directory exists
     ensureDirectoryExists(dirPath);
 
-    const backendEndpoint = `${getBaseUrl()}/orders/${orderId.toString()}/delivery/YOUR_SECRET_KEY`;
+    const backendEndpoint = `${getBaseUrl()}/api/v1/orders/${orderId.toString()}/delivery/YOUR_SECRET_KEY`;
     await QRCode.toFile(qrCodePath, backendEndpoint);
 
     // Construct the local URL
@@ -145,116 +145,250 @@ const makeOrdersInDelivery = asyncHandler(async (req, res, next) => {
   return res.status(200).json({ status: "success" });
 });
 
-const handleMakeOrderCompleted = asyncHandler(async (req, res, next) => {
-  const { orderId, deliverySecretKey } = req.params;
+// const handleMakeOrderCompleted = asyncHandler(async (req, res, next) => {
+//   const { orderId, deliverySecretKey } = req.params;
 
-  // Find the delivery associated with the order
-  const delivery = await Delivery.findOne({ pendingOrders: orderId });
+//   // Find the delivery associated with the order
+//   const delivery = await Delivery.findOne({ pendingOrders: orderId });
 
-  if (!delivery) {
-    return next(new ApiError("Delivery not found", 404));
-  }
+//   if (!delivery) {
+//     return next(new ApiError("Delivery not found", 404));
+//   }
 
-  // Compare the provided secret key with the hashed one stored in the database
-  const isMatch = await bcrypt.compare(deliverySecretKey, delivery.secretKey);
+//   // Compare the provided secret key with the hashed one stored in the database
+//   const isMatch = await bcrypt.compare(deliverySecretKey, delivery.secretKey);
 
-  if (!isMatch) {
-    return next(new ApiError("invalid secret key", 401));
-  }
+//   if (!isMatch) {
+//     return next(new ApiError("invalid secret key", 401));
+//   }
 
-  // Continue with the process of marking the order as completed
-  const order = await Order.findById(orderId).populate({
-    path: "books.book",
-    populate: {
-      path: "owner",
-      model: "User",
-      select: "stripeAccountId name email",
-    },
-  });
+//   // Continue with the process of marking the order as completed
+//   const order = await Order.findById(orderId).populate({
+//     path: "books.book",
+//     populate: {
+//       path: "owner",
+//       model: "User",
+//       select: "stripeAccountId name email",
+//     },
+//   });
 
-  if (!order) {
-    return next(new ApiError("order not found", 404));
-  }
+//   if (!order) {
+//     return next(new ApiError("order not found", 404));
+//   }
 
-  // Mark the order as completed
-  order.status = "completed";
-  order.paymentStatus = "paid";
-  await order.save();
+//   // Mark the order as completed
+//   order.status = "completed";
+//   order.paymentStatus = "paid";
+//   await order.save();
 
-  // Remove the order from the delivery's pendingOrders
-  delivery.pendingOrders = delivery.pendingOrders.filter(
-    (pendingOrderId) => pendingOrderId.toString() !== orderId
-  );
-  delivery.deliveredOrders.push(orderId);
-  await delivery.save();
+//   // Remove the order from the delivery's pendingOrders
+//   delivery.pendingOrders = delivery.pendingOrders.filter(
+//     (pendingOrderId) => pendingOrderId.toString() !== orderId
+//   );
+//   delivery.deliveredOrders.push(orderId);
+//   await delivery.save();
 
-  // save online books to user
-  const user = await User.findById(order.user);
-  for (const item of order.books) {
-    if (item.book.status === "online") {
-      user.onlineBooks.push(item.book._id);
-    }
-  }
-  await user.save();
+//   // save online books to user
+//   const user = await User.findById(order.user);
+//   for (const item of order.books) {
+//     if (item.book.status === "online") {
+//       user.onlineBooks.push(item.book._id);
+//     }
+//   }
+//   await user.save();
 
-  // prepare money to send to owner
-  const price = order.finalPrice - process.env.DELIVERY_TAX;
+//   // prepare money to send to owner
+//   const price = order.finalPrice - process.env.DELIVERY_TAX;
 
-  // send owner money
-  const ownerName = order.books[0].book.owner.name;
-  const ownerEmail = order.books[0].book.owner.email;
-  const ownerStripeAccountId = order.books[0].book.owner.stripeAccountId;
-  const ownerFee = calculateOwnerFee(price);
-  const roundedAmount = Math.round(ownerFee);
+//   // send owner money
+//   const ownerName = order.books[0].book.owner.name;
+//   const ownerEmail = order.books[0].book.owner.email;
+//   const ownerStripeAccountId = order.books[0].book.owner.stripeAccountId;
+//   const ownerFee = calculateOwnerFee(price);
+//   const roundedAmount = Math.round(ownerFee);
 
-  const balance = await stripe.balance.retrieve();
-  const availableBalance =
-    balance.available.find((b) => b.currency === "usd").amount / 100;
+//   const balance = await stripe.balance.retrieve();
+//   const availableBalance =
+//     balance.available.find((b) => b.currency === "usd").amount / 100;
 
-  if (availableBalance >= roundedAmount) {
-    await stripe.transfers.create({
-      amount: roundedAmount * 100,
-      currency: "usd",
-      destination: ownerStripeAccountId,
+//   if (availableBalance >= roundedAmount) {
+//     await stripe.transfers.create({
+//       amount: roundedAmount * 100,
+//       currency: "usd",
+//       destination: ownerStripeAccountId,
+//     });
+
+//     if (order.paymentType == "online") {
+//       await Transfer.findOneAndUpdate(
+//         { order: order._id },
+//         { status: "completed" }
+//       );
+//     }
+
+//     await sendEmail(
+//       ownerEmail,
+//       "تم تحويل الأموال بنجاح",
+//       `مرحبًا ${ownerName}
+//       نود إعلامك بأن تحويل الأموال قد تم بنجاح.
+//       شكرًا لاستخدامك منصتنا.`
+//     );
+//   } else {
+//     const transferData = {
+//       ownerId: order.books[0].book.owner._id,
+//       amount: order.finalPrice,
+//       status: "pending",
+//       order: order._id,
+//     };
+//     await Transfer.create(transferData);
+//     await sendEmail(
+//       ownerEmail,
+//       "تأخير في تحويل الأموال",
+//       `
+//       مرحبًا ${ownerName}
+//       نود إعلامك بأن تحويل الأموال قد تم تأخيره. سيتم إتمام التحويل قريبًا.
+//       شكرًا لتفهمك.`
+//     );
+//     return next(new ApiError("not enough money", 400));
+//   }
+
+//   return res.status(200).json({
+//     status: "success",
+//     message: "order completed successfully",
+//     data: { order },
+//   });
+// });
+
+const handleMakeOrdersCompleted = asyncHandler(async (req, res, next) => {
+  const ordersIds = req.body.ordersIds || [req.params.orderId];
+  const deliverySecretKey = req.params.deliverySecretKey;
+
+  if (req.user) {
+    const orders = await Order.find({
+      _id: { $in: ordersIds },
+      status: "inDelivery",
     });
 
-    if (order.paymentType == "online") {
-      await Transfer.findOneAndUpdate(
-        { order: order._id },
-        { status: "completed" }
+    if (orders.length !== ordersIds.length) {
+      const missingOrders = ordersIds.filter(
+        (orderId) => !orders.some((order) => order._id.toString() === orderId)
       );
+      return res.status(404).json({
+        message: "some orders were not found",
+        data: { orders: missingOrders },
+      });
+    }
+  }
+
+  // Loop through each orderId
+  for (const orderId of ordersIds) {
+    // Find the delivery associated with the order
+    const delivery = await Delivery.findOne({ pendingOrders: orderId });
+
+    if (!delivery) {
+      return next(new ApiError(`Delivery not found for order ${orderId}`, 404));
     }
 
-    await sendEmail(
-      ownerEmail,
-      "تم تحويل الأموال بنجاح",
-      `مرحبًا ${ownerName}
-      نود إعلامك بأن تحويل الأموال قد تم بنجاح.
-      شكرًا لاستخدامك منصتنا.`
+    if (!req.user) {
+      const isMatch = await bcrypt.compare(
+        deliverySecretKey,
+        delivery.secretKey
+      );
+
+      if (!isMatch) {
+        return next(
+          new ApiError(`invalid secret key for order ${orderId}`, 401)
+        );
+      }
+    }
+
+    // Continue with the process of marking the order as completed
+    const order = await Order.findById(orderId).populate({
+      path: "books.book",
+      populate: {
+        path: "owner",
+        model: "User",
+        select: "stripeAccountId name email",
+      },
+    });
+
+    if (!order) {
+      return next(new ApiError(`Order not found for order ${orderId}`, 404));
+    }
+
+    // Mark the order as completed
+    order.status = "completed";
+    order.paymentStatus = "paid";
+    await order.save();
+
+    // Remove the order from the delivery's pendingOrders
+    delivery.pendingOrders = delivery.pendingOrders.filter(
+      (pendingOrderId) => pendingOrderId.toString() !== orderId
     );
-  } else {
-    const transferData = {
-      ownerId: order.books[0].book.owner._id,
-      amount: order.finalPrice,
-      status: "pending",
-      order: order._id,
-    };
-    await Transfer.create(transferData);
-    await sendEmail(
-      ownerEmail,
-      "تأخير في تحويل الأموال",
-      `
-      مرحبًا ${ownerName}
-      نود إعلامك بأن تحويل الأموال قد تم تأخيره. سيتم إتمام التحويل قريبًا.
-      شكرًا لتفهمك.`
-    );
-    return next(new ApiError("not enough money", 400));
+    delivery.deliveredOrders.push(orderId);
+    await delivery.save();
+
+    // Save online books to user
+    const user = await User.findById(order.user);
+    for (const item of order.books) {
+      if (item.book.status === "online") {
+        user.onlineBooks.push(item.book._id);
+      }
+    }
+    await user.save();
+
+    // Prepare money to send to owner
+    const price = order.finalPrice - process.env.DELIVERY_TAX;
+
+    // Send owner money
+    const ownerName = order.books[0].book.owner.name;
+    const ownerEmail = order.books[0].book.owner.email;
+    const ownerStripeAccountId = order.books[0].book.owner.stripeAccountId;
+    const ownerFee = calculateOwnerFee(price);
+    const roundedAmount = Math.round(ownerFee);
+
+    const balance = await stripe.balance.retrieve();
+    const availableBalance =
+      balance.available.find((b) => b.currency === "usd").amount / 100;
+
+    if (availableBalance >= roundedAmount) {
+      await stripe.transfers.create({
+        amount: roundedAmount * 100,
+        currency: "usd",
+        destination: ownerStripeAccountId,
+      });
+
+      if (order.paymentType === "online") {
+        await Transfer.findOneAndUpdate(
+          { order: order._id },
+          { status: "completed" }
+        );
+      }
+
+      await sendEmail(
+        ownerEmail,
+        "تم تحويل الأموال بنجاح",
+        `مرحبًا ${ownerName}\nنود إعلامك بأن تحويل الأموال قد تم بنجاح.\nشكرًا لاستخدامك منصتنا.`
+      );
+    } else {
+      const transferData = {
+        ownerId: order.books[0].book.owner._id,
+        amount: order.finalPrice,
+        status: "pending",
+        order: order._id,
+      };
+      await Transfer.create(transferData);
+      await sendEmail(
+        ownerEmail,
+        "تأخير في تحويل الأموال",
+        `مرحبًا ${ownerName}\nنود إعلامك بأن تحويل الأموال قد تم تأخيره. سيتم إتمام التحويل قريبًا.\nشكرًا لتفهمك.`
+      );
+      return next(new ApiError("Not enough money", 400));
+    }
   }
 
   return res.status(200).json({
     status: "success",
-    message: "order completed successfully",
-    data: { order },
+    message: "all orders completed successfully",
   });
 });
 
@@ -332,14 +466,21 @@ const cancelOrder = asyncHandler(async (req, res, next) => {
 });
 
 const getUserOrders = asyncHandler(async (req, res, next) => {
-  const orders = await Order.find({ user: req.user._id }).populate({
-    path: "books.book",
-    select: "-book",
-    populate: {
-      path: "category",
-      select: "name",
+  const orders = await Order.find({ user: req.user._id }).populate([
+    {
+      path: "books.book",
+      select: "-book",
+      populate: {
+        path: "category",
+        select: "name",
+      },
     },
-  });
+    {
+      path: "address",
+      select: "-createdAt -updatedAt -__v -user",
+    },
+  ]);
+
   return res.status(200).json({ status: "success", data: { orders } });
 });
 
@@ -361,14 +502,20 @@ const getAdminOrders = asyncHandler(async (req, res, next) => {
     query.status = status;
   }
 
-  const populate = {
-    path: "books.book",
-    select: "-book",
-    populate: {
-      path: "category",
-      select: "name",
+  const populate = [
+    {
+      path: "books.book",
+      select: "-book",
+      populate: {
+        path: "category",
+        select: "name",
+      },
     },
-  };
+    {
+      path: "address",
+      select: "-createdAt -updatedAt -__v -user",
+    },
+  ];
 
   const paginator = new Pagination(
     "orders",
@@ -387,7 +534,7 @@ const getAdminOrders = asyncHandler(async (req, res, next) => {
 module.exports = {
   makeOrdersInDelivery,
   createOrderAndUpdateCart,
-  handleMakeOrderCompleted,
+  handleMakeOrdersCompleted,
   cancelOrder,
   getUserOrders,
   deleteUserOrders,

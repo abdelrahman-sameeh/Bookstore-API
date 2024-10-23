@@ -19,12 +19,12 @@ const getBooks = asyncHandler(async (req, res, next) => {
   const { role, _id: userId } = req.user || {};
   let query = {};
 
-  const populate = [{ field: "category", select: "name" }];
+  const populate = [{ path: "category", select: "name" }];
 
   if (!role) {
     // for only users
     query.reviewStatus = "approved";
-    populate.push({ field: "owner", select: "name email" });
+    populate.push({ path: "owner", select: "name email" });
   } else if (role === "owner") {
     // for owner
     query.owner = userId;
