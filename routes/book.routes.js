@@ -7,6 +7,8 @@ const {
   deleteOneBook,
   updateBook,
   reviewBook,
+  getUserOnlineBooks,
+  getStreamingBook,
 } = require("../controllers/book.controllers");
 const upload = require("../utils/uploadFiles");
 const {
@@ -50,12 +52,7 @@ router
     updateBookValidator,
     updateBook
   )
-  .delete(
-    isAuth,
-    allowTo("owner"),
-    deleteBookValidator,
-    deleteOneBook
-  );
+  .delete(isAuth, allowTo("owner"), deleteBookValidator, deleteOneBook);
 
 router.patch(
   "/books/:id/reviewBook",
@@ -65,6 +62,8 @@ router.patch(
   reviewBook
 );
 
+router.get("/user/books", isAuth, allowTo("user"), getUserOnlineBooks);
 
+router.get("/user/book/:bookId", isAuth, allowTo("user"), getStreamingBook);
 
 module.exports = router;

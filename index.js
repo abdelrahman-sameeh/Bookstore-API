@@ -36,7 +36,6 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 app.use(cors({}));
 
-
 // Load YAML file
 const swaggerDocument = YAML.load("./swagger.yaml");
 app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
@@ -79,7 +78,11 @@ app.use((error, req, res, next) => {
           status: httpStatus(error.statusCode),
           stack: error.stack,
         }
-      : { message: error.message, status: httpStatus(error.statusCode) };
+      : {
+          message: error.message,
+          status: httpStatus(error.statusCode),
+          stack: error.stack,
+        };
 
   res.status(error.statusCode || 500).json(jsonResponse);
 });

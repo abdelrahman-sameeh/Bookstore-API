@@ -38,23 +38,25 @@ const bookSchema = new mongoose.Schema(
 );
 
 bookSchema.post(/^find/, function (docs) {
-  if (docs.length) {
-    docs.forEach((doc) => {
-      if (doc.imageCover) {
-        doc.imageCover = `${baseUrl}/${doc.imageCover}`;
+  if (process.env.MODE === "dev") {
+    if (docs.length) {
+      docs.forEach((doc) => {
+        if (doc.imageCover) {
+          doc.imageCover = `${baseUrl}/${doc.imageCover}`;
+        }
+      });
+      docs.forEach((doc) => {
+        if (doc.book) {
+          doc.book = `${baseUrl}/${doc.book}`;
+        }
+      });
+    } else {
+      if (docs.imageCover) {
+        docs.imageCover = `${baseUrl}/${docs.imageCover}`;
       }
-    });
-    docs.forEach((doc) => {
-      if (doc.book) {
-        doc.book = `${baseUrl}/${doc.book}`;
+      if (docs.book) {
+        docs.book = `${baseUrl}/${docs.book}`;
       }
-    });
-  } else {
-    if (docs.imageCover) {
-      docs.imageCover = `${baseUrl}/${docs.imageCover}`;
-    }
-    if (docs.book) {
-      docs.book = `${baseUrl}/${docs.book}`;
     }
   }
 });

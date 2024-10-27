@@ -1,10 +1,15 @@
 const asyncHandler = require("../middlewares/asyncHandler");
 const Book = require("../models/book.model");
 const Order = require("../models/order.model");
+const { User } = require("../models/user.model");
 const ApiError = require("../utils/ApiError");
 const Pagination = require("../utils/Pagination");
 const { sendEmail } = require("../utils/sendEmailSetup");
 const baseUrl = process.env.BASE_URL || "http://localhost:3000";
+const { cloudinary } = require("../middlewares/cloudinary");
+const path = require("path");
+const fs = require("fs");
+const { default: axios } = require("axios");
 
 const _validateSortOrder = (value, field) => {
   if (value !== "asc" && value !== "desc") {
@@ -86,10 +91,9 @@ const createBook = asyncHandler(async (req, res, next) => {
   }
   req.body.owner = req.user._id;
 
-
   let newBook = await Book.create(req.body);
-  newBook = await newBook.populate("category")
-  
+  newBook = await newBook.populate("category");
+
   if (process.env.MODE === "dev") {
     if (newBook.book) {
       newBook.book = `${baseUrl}/${newBook.book}`;
@@ -197,6 +201,95 @@ const reviewBook = asyncHandler(async (req, res, next) => {
   res.status(200).json({ status: "success", data: book });
 });
 
+const getUserOnlineBooks = asyncHandler(async (req, res, next) => {
+  const books = await User.findById(req.user._id, "onlineBooks").populate({
+    path: "onlineBooks",
+    select: "-book",
+    populate: [
+      {
+        path: "category",
+        select: "name",
+      },
+      {
+        path: "owner",
+        select: "name",
+      },
+    ],
+  });
+  return res
+    .status(200)
+    .json({ message: "success", data: { books: books.onlineBooks } });
+});
+
+const getStreamingBook = asyncHandler(async (req, res, next) => {
+  const { bookId } = req.params;
+  const book = await Book.findById(bookId);
+
+  if (!req.user.onlineBooks?.includes(bookId)) {
+    return next(new ApiError("book not includes in onlineBooks", 404));
+  }
+
+  if (process.env.MODE === "dev") {
+    const localFilePath = path.join(
+      __dirname,
+      "..",
+      "uploads",
+      "books",
+      book.book.split("/uploads/books/")[1]
+    );
+
+    if (!fs.existsSync(localFilePath)) {
+      return next(new ApiError("file not found", 404));
+    }
+
+    res.setHeader("Content-Type", "application/pdf");
+
+    const fileStream = fs.createReadStream(localFilePath);
+    fileStream.pipe(res);
+  } else {
+    const response = await axios.get(book.book, { responseType: "stream" });
+
+
+    if(response.status!==200){
+      return next(new ApiError('error'))
+    }
+
+    const localFilePath = path.join(
+      __dirname,
+      "..",
+      "downloads",
+      `${bookId}.pdf`
+    );
+
+    // إنشاء الدليل إذا لم يكن موجودًا
+    fs.mkdirSync(path.dirname(localFilePath), { recursive: true });
+
+    // حفظ الملف محليًا
+    const writer = fs.createWriteStream(localFilePath);
+    response.data.pipe(writer);
+
+    writer.on("finish", () => {
+      res.setHeader("Content-Type", "application/pdf");
+      const fileStream = fs.createReadStream(localFilePath);
+      fileStream.pipe(res);
+
+      // حذف الملف بعد إرساله
+      setTimeout(() => {
+        fs.unlink(localFilePath, (err) => {
+          if (err) {
+            console.error("Error deleting file:", err);
+          }
+        });
+      }, 1000);
+    });
+
+    writer.on("error", (err) => {
+      return next(new ApiError("Error saving file", 500));
+    });
+
+  }
+});
+
 module.exports = {
   createBook,
   getBooks,
@@ -204,4 +297,6 @@ module.exports = {
   deleteOneBook,
   updateBook,
   reviewBook,
+  getUserOnlineBooks,
+  getStreamingBook,
 };

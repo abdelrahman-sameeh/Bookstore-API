@@ -153,3 +153,9 @@ The payment process in the application is designed to be secure, efficient, and 
 ## الخاتمة
 
 تم تصميم عملية الدفع في التطبيق لتكون آمنة وفعالة وسهلة الاستخدام. من خلال دعم المدفوعات عبر الإنترنت وغير المتصلة بالإنترنت، يلبي النظام مجموعة واسعة من تفضيلات المستخدمين مع الحفاظ على تدابير أمان قوية.
+
+
+## Challenges in the Project
+
+### Encrypting Online Books
+One challenge in this project is to make sure online books are encrypted. We want to avoid returning them as direct links to keep them secure and protect the content. This means we need to create a way to encrypt the books so that only allowed users can see them.

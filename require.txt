@@ -6,9 +6,6 @@
 -- delivery if book status is offline ++++ ----
 
 -- chat between user and owner
-
-################### backlog ###################
-
 (make cart for one owner) ++++ ----
 (update coupon to be for owner) ++++ ---- 
 (add address for offline order) ++++ ----
@@ -19,3 +16,6 @@
     user can cancel his order if order has offline book and order status is inProgress
     other wise can't cancel order
 }
+
+################### backlog ###################
+
