@@ -16,11 +16,13 @@ const register = asyncHandler(async (req, res, next) => {
     return next(new ApiError("Email already exist", 400));
   }
 
-  let user = new User(req.body);
-  user.save();
-  const hashed = await bcrypt.hash(req.body.password, 10);
-  user.password = hashed;
-  user.save();
+  const hashed = await bcrypt.hash(req.body.password, 10); // تشفير كلمة المرور
+  let user = new User({
+    ...req.body,
+    password: hashed, 
+  });
+
+  user.save()
 
   // Sanitization
   let payload = {
@@ -45,7 +47,7 @@ const register = asyncHandler(async (req, res, next) => {
     const hashedSecretKey = await bcrypt.hash(secretKey, 10);
 
     await Delivery.create({ user: user._id, secretKey: hashedSecretKey });
-    user = {
+    payload = {
       _id: user._id,
       name: user.name,
       email: user.email,
@@ -56,7 +58,7 @@ const register = asyncHandler(async (req, res, next) => {
   res.status(201).json({
     status: "success",
     data: {
-      user,
+      user: payload,
       token,
     },
   });
@@ -234,7 +236,7 @@ module.exports = {
   sendResetCode,
   forgetPassword,
   changePassword,
+  getLoggedUser,
   isAuth,
   allowTo,
-  getLoggedUser,
 };
