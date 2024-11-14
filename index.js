@@ -101,19 +101,13 @@ server.listen(PORT, () => {
 
 io.activeUsers = {};
 
+
+const registerEvent = require('./socketEvents/register.socket');
+const disconnectEvent = require('./socketEvents/disconnect.socket');
+const chatEvent = require('./socketEvents/chat.socket');
+
 io.on("connection", (socket) => {
-  socket.on("register", (userId) => {
-    io.activeUsers[userId] = socket.id;
-  });
-
-
-  socket.on("disconnect", () => {
-    const userId = Object.keys(io.activeUsers).find(
-      (key) => io.activeUsers[key] === socket.id
-    );
-
-    if (userId) {
-      delete io.activeUsers[userId];
-    }
-  });
+  registerEvent(io, socket);
+  disconnectEvent(io, socket);
+  chatEvent(io, socket);  
 });

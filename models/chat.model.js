@@ -2,7 +2,6 @@ const { default: mongoose } = require("mongoose");
 
 const chatSchema = new mongoose.Schema(
   {
-    _id: String,
     users: [
       {
         type: mongoose.Types.ObjectId,
@@ -23,6 +22,6 @@ const chatSchema = new mongoose.Schema(
   }
 );
 
-const Chat = mongoose.model(chatSchema);
+const Chat = mongoose.model("Chat", chatSchema);
 
-module.exports = Chat;
+module.exports = { Chat };
