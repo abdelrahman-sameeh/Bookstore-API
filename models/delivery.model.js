@@ -19,7 +19,7 @@ const deliverySchema = new mongoose.Schema({
       ref: "Order",
     },
   ],
-});
+}, {timestamps: true});
 
 const Delivery = mongoose.model("Delivery", deliverySchema);
 
