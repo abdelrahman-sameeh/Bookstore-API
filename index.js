@@ -98,16 +98,16 @@ server.listen(PORT, () => {
   console.log(`App listening on port ${PORT}`);
 });
 
-
 io.activeUsers = {};
 
-
-const registerEvent = require('./socketEvents/register.socket');
-const disconnectEvent = require('./socketEvents/disconnect.socket');
-const chatEvent = require('./socketEvents/chat.socket');
+const registerEvent = require("./socketEvents/register.socket");
+const disconnectEvent = require("./socketEvents/disconnect.socket");
+const chatEvent = require("./socketEvents/chat.socket");
 
 io.on("connection", (socket) => {
   registerEvent(io, socket);
   disconnectEvent(io, socket);
-  chatEvent(io, socket);  
+  chatEvent(io, socket);
 });
+
+module.exports = { app };
