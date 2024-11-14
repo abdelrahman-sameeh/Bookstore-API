@@ -21,13 +21,18 @@ const orderRouter = require("./routes/order.routes");
 const paymentRouter = require("./routes/payment.routes");
 const webhookRoutes = require("./routes/webhook.routes");
 const deliveryRouter = require("./routes/delivery.routes");
+const usersRouter = require("./routes/users.routes");
 
 const { retryFailedRefunds } = require("./controllers/payment.controllers");
 const cors = require("cors");
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server);
+const io = new Server(server, {
+  cors: {
+    origin: process.env.FRONTEND_URL,
+  },
+});
 
 connectDB();
 
@@ -65,6 +70,7 @@ app.use("/api/v1", cartRouter);
 app.use("/api/v1", orderRouter);
 app.use("/api/v1", paymentRouter);
 app.use("/api/v1", deliveryRouter);
+app.use("/api/v1", usersRouter);
 
 app.all("*", (req, res) => {
   return res.status(404).json({ error: "not found this route" });
@@ -92,15 +98,16 @@ server.listen(PORT, () => {
   console.log(`App listening on port ${PORT}`);
 });
 
-// Socket.io setup
+io.activeUsers = {};
+
+const registerEvent = require("./socketEvents/register.socket");
+const disconnectEvent = require("./socketEvents/disconnect.socket");
+const chatEvent = require("./socketEvents/chat.socket");
+
 io.on("connection", (socket) => {
-  console.log("A user connected");
-
-  // Handle socket events here
-
-  socket.on("disconnect", () => {
-    console.log("A user disconnected");
-  });
+  registerEvent(io, socket);
+  disconnectEvent(io, socket);
+  chatEvent(io, socket);
 });
 
 module.exports = { app };
