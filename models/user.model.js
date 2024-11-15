@@ -1,4 +1,5 @@
 const { default: mongoose } = require("mongoose");
+const { getBaseUrl } = require("../utils/getBaseUrl");
 
 const userSchema = new mongoose.Schema(
   {
@@ -36,6 +37,14 @@ const userSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+userSchema.post(/^find/, function (docs) {
+  if (process.env.MODE === "dev") {
+    if (docs.picture) {
+      docs.picture = `${getBaseUrl()}/${docs.picture}`;
+    }
+  }
+});
 
 const User = mongoose.model("User", userSchema);
 
