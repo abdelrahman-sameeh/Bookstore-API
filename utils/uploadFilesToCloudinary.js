@@ -16,6 +16,7 @@ const uploadFilesToCloudinary = async (req, res, next) => {
     next();
   } else {
     try {
+      // for book image
       if (req.files.image) {
         const imagePath = req.files.image[0].path;
         const imageResult = await uploadAsync(imagePath, {
@@ -25,6 +26,7 @@ const uploadFilesToCloudinary = async (req, res, next) => {
         req.body.imageCover = imageResult.secure_url;
       }
 
+      // for book pdf
       if (req.files.bookFile) {
         const bookFilePath = req.files.bookFile[0].path;
         const bookFileResult = await uploadAsync(bookFilePath, {
@@ -33,6 +35,17 @@ const uploadFilesToCloudinary = async (req, res, next) => {
         });
         req.body.book = bookFileResult.secure_url;
       }
+
+      // for users picture
+      if (req.files.picture) {
+        const pictureFilePath = req.files.picture[0].path;
+        const pictureFileResult = await uploadAsync(pictureFilePath, {
+          folder: path.join("book-store", "users-profile-pictures"),
+          resource_type: "raw",
+        });
+        req.body.picture = pictureFileResult.secure_url;
+      }
+
       next();
     } catch (error) {
       res

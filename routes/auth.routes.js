@@ -6,7 +6,6 @@ const {
   forgetPassword,
   isAuth,
   changePassword,
-  getLoggedUser,
 } = require("../controllers/auth.controllers");
 const {
   registerValidator,
@@ -14,6 +13,7 @@ const {
   forgetPasswordValidator,
   changePasswordValidator,
 } = require("../validators/auth.validator");
+const { getLoggedUser } = require("../controllers/user.controllers");
 
 const router = express.Router();
 

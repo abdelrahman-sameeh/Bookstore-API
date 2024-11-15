@@ -16,6 +16,8 @@ const storage = multer.diskStorage({
       uploadPath = path.join("uploads", "images");
     } else if (file.fieldname === "bookFile") {
       uploadPath = path.join("uploads", "books");
+    } else if (file.fieldname === "picture") {
+      uploadPath = path.join("uploads", "users", "pictures");
     }
     ensureDirExists(uploadPath);
     cb(null, uploadPath);
@@ -32,7 +34,7 @@ const storage = multer.diskStorage({
 const upload = multer({
   storage: storage,
   fileFilter: (req, file, cb) => {
-    if (file.fieldname === "image") {
+    if (["picture", "image"].includes(file.fieldname)) {
       checkImageFileType(file, cb);
     } else if (file.fieldname === "bookFile") {
       cb(null, true);
