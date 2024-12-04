@@ -30,10 +30,18 @@ const checkIsExistUser = asyncHandler(async (req, res, next) => {
     return next(new ApiError("user not found", 404));
   }
 
+  const serializedData = {
+    _id: user._id,
+    name: user.name,
+    picture: user.picture,
+    email: user.email,
+    role: user.role
+  }
+
   res.status(200).json({
     message: "success",
     data: {
-      user: user._id,
+      user: serializedData,
     },
   });
 });
@@ -68,7 +76,7 @@ const updateUser = asyncHandler(async (req, res, next) => {
   if (user.picture) {
     const picturePath =
       MODE === "dev"
-        ? `${getBaseUrl()}/${user.picture}`
+        ? user.picture
         : user.picture;
     payload.user.picture = picturePath;
   }
