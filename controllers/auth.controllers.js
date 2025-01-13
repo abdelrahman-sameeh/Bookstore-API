@@ -1,4 +1,4 @@
-const ApiError = require("../utils/ApiError");
+const ApiError = require("../utils/api-error");
 const asyncHandler = require("../middlewares/asyncHandler");
 const { User } = require("../models/user.model");
 const bcrypt = require("bcryptjs");
@@ -19,10 +19,10 @@ const register = asyncHandler(async (req, res, next) => {
   const hashed = await bcrypt.hash(req.body.password, 10); // تشفير كلمة المرور
   let user = new User({
     ...req.body,
-    password: hashed, 
+    password: hashed,
   });
 
-  user.save()
+  user.save();
 
   // Sanitization
   let payload = {
@@ -164,7 +164,6 @@ const changePassword = asyncHandler(async (req, res, next) => {
     data: { message: "Your password has been successfully changed" },
   });
 });
-
 
 const isAuth = asyncHandler(async (req, res, next) => {
   const authorization = req.headers.authorization || req.headers.Authorization;

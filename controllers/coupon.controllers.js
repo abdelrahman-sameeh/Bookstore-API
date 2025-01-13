@@ -1,13 +1,13 @@
 const asyncHandler = require("../middlewares/asyncHandler");
 const Coupon = require("../models/coupon.model");
-const ApiError = require("../utils/ApiError");
+const ApiError = require("../utils/api-error");
 const Pagination = require("../utils/Pagination");
 
 exports.createCoupon = asyncHandler(async (req, res, next) => {
   const data = {
     ...req.body,
-    owner: req.user._id
-  }
+    owner: req.user._id,
+  };
   const coupon = await Coupon.create(data);
   res.status(201).json({
     status: "success",
@@ -19,7 +19,7 @@ exports.createCoupon = asyncHandler(async (req, res, next) => {
 
 exports.getCoupons = asyncHandler(async (req, res, next) => {
   const { available, search, page, limit } = req.query;
-  let query = {owner: req.user._id};
+  let query = { owner: req.user._id };
   if (available === "true") {
     query.expiryDate = { $gte: new Date() };
   } else if (available === "false") {
@@ -50,7 +50,9 @@ exports.getOneCoupon = asyncHandler(async (req, res, next) => {
 });
 
 exports.updateOneCoupon = asyncHandler(async (req, res, next) => {
-  const coupon = await Coupon.findByIdAndUpdate(req.params.id, req.body, {new: true});
+  const coupon = await Coupon.findByIdAndUpdate(req.params.id, req.body, {
+    new: true,
+  });
   if (!coupon) return next(new ApiError("coupon not found", 404));
 
   res.status(200).json({
@@ -59,11 +61,10 @@ exports.updateOneCoupon = asyncHandler(async (req, res, next) => {
       coupon,
     },
   });
-
 });
 
 exports.deleteOneCoupon = asyncHandler(async (req, res, next) => {
   const coupon = await Coupon.findByIdAndDelete(req.params.id);
   if (!coupon) return next(new ApiError("coupon not found", 404));
-  res.status(204).json()
+  res.status(204).json();
 });

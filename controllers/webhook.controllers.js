@@ -1,7 +1,7 @@
 const Cart = require("../models/cart.model");
 const Transfer = require("../models/transfer.model");
 const { User } = require("../models/user.model");
-const { calculateOwnerFee } = require("../utils/calculateFees");
+const { calculateOwnerFee } = require("../utils/calculate-fees");
 const { sendEmail } = require("../utils/sendEmailSetup");
 const { createOrderAndUpdateCart } = require("./order.controllers");
 
@@ -173,7 +173,6 @@ const handleBalanceAvailable = async () => {
         نود إعلامك بأن تحويل الأموال قد تم بنجاح.
         شكرًا لاستخدامك منصتنا.`
       );
-
     } else {
       console.log("not enough available balance for the remaining transfers");
       continue;

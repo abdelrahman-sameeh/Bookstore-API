@@ -1,7 +1,7 @@
 const { check } = require("express-validator");
 const validatorMiddleware = require("../middlewares/validatorMiddleware");
 const Coupon = require("../models/coupon.model");
-const ApiError = require("../utils/ApiError");
+const ApiError = require("../utils/api-error");
 
 exports.createCouponValidator = [
   check("code")
@@ -10,7 +10,7 @@ exports.createCouponValidator = [
     .isLength({ min: 1 })
     .withMessage("code must be at least 1 character long")
     .trim()
-    .custom(async (value, {req}) => {
+    .custom(async (value, { req }) => {
       if (value.trim() === "") {
         throw new ApiError("code cannot be an empty string", 400);
       }
@@ -54,8 +54,11 @@ exports.getDeleteOneCouponValidator = [
       if (!coupon) {
         throw new ApiError("coupon not found", 404);
       }
-      if(coupon.owner.toString() != req.user._id.toString()){
-        throw new ApiError("you do not have permission to access this coupon", 403);
+      if (coupon.owner.toString() != req.user._id.toString()) {
+        throw new ApiError(
+          "you do not have permission to access this coupon",
+          403
+        );
       }
       return true;
     }),
@@ -71,8 +74,11 @@ exports.updateOneCouponValidator = [
       if (!coupon) {
         throw new ApiError("coupon not found", 404);
       }
-      if(coupon.owner.toString() != req.user._id.toString()){
-        throw new ApiError("you do not have permission to access this coupon", 403);
+      if (coupon.owner.toString() != req.user._id.toString()) {
+        throw new ApiError(
+          "you do not have permission to access this coupon",
+          403
+        );
       }
       return true;
     }),
@@ -83,7 +89,7 @@ exports.updateOneCouponValidator = [
     .isLength({ min: 1 })
     .withMessage("code must be at least 1 character long")
     .trim()
-    .custom(async (value, {req}) => {
+    .custom(async (value, { req }) => {
       if (value.trim() === "") {
         throw new ApiError("code cannot be an empty string", 400);
       }

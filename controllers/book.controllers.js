@@ -2,7 +2,7 @@ const asyncHandler = require("../middlewares/asyncHandler");
 const Book = require("../models/book.model");
 const Order = require("../models/order.model");
 const { User } = require("../models/user.model");
-const ApiError = require("../utils/ApiError");
+const ApiError = require("../utils/api-error");
 const Pagination = require("../utils/Pagination");
 const { sendEmail } = require("../utils/sendEmailSetup");
 const baseUrl = process.env.BASE_URL || "http://localhost:3000";
@@ -249,9 +249,8 @@ const getStreamingBook = asyncHandler(async (req, res, next) => {
   } else {
     const response = await axios.get(book.book, { responseType: "stream" });
 
-
-    if(response.status!==200){
-      return next(new ApiError('error'))
+    if (response.status !== 200) {
+      return next(new ApiError("error"));
     }
 
     const localFilePath = path.join(
@@ -286,7 +285,6 @@ const getStreamingBook = asyncHandler(async (req, res, next) => {
     writer.on("error", (err) => {
       return next(new ApiError("Error saving file", 500));
     });
-
   }
 });
 

@@ -1,7 +1,7 @@
 const asyncHandler = require("../middlewares/asyncHandler");
 const Book = require("../models/book.model");
 const Cart = require("../models/cart.model");
-const ApiError = require("../utils/ApiError");
+const ApiError = require("../utils/api-error");
 
 exports.getLoggedUserCarts = asyncHandler(async (req, res, next) => {
   const carts = await Cart.find({ user: req.user._id })

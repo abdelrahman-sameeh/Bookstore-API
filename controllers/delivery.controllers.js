@@ -1,7 +1,7 @@
 const asyncHandler = require("../middlewares/asyncHandler");
 const Delivery = require("../models/delivery.model");
 const { User } = require("../models/user.model");
-const ApiError = require("../utils/ApiError");
+const ApiError = require("../utils/api-error");
 
 exports.getDeliveries = asyncHandler(async (req, res, next) => {
   const deliveries = await Delivery.find({}, "user")

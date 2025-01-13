@@ -2,7 +2,7 @@ const { check } = require("express-validator");
 const validatorMiddleware = require("../middlewares/validatorMiddleware");
 const Order = require("../models/order.model");
 const Delivery = require("../models/delivery.model");
-const ApiError = require("../utils/ApiError");
+const ApiError = require("../utils/api-error");
 
 exports.updateOrderStatusValidator = [
   check("ordersIds")

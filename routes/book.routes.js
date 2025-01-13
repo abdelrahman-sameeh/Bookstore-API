@@ -19,7 +19,7 @@ const {
   reviewBookValidator,
 } = require("../validators/book.validator");
 const router = express.Router();
-const uploadFilesToCloudinary = require("../utils/uploadFilesToCloudinary");
+const uploadFilesToCloudinary = require("../utils/upload-files-to-cloudinary");
 
 const uploadFields = upload.fields([
   { name: "image", maxCount: 1 },

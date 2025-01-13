@@ -1,7 +1,7 @@
 const { check } = require("express-validator");
 const validatorMiddleware = require("../middlewares/validatorMiddleware");
 const { User } = require("../models/user.model");
-const ApiError = require("../utils/ApiError");
+const ApiError = require("../utils/api-error");
 
 const registerValidator = [
   check("name").notEmpty().withMessage("Name is required"),
@@ -41,7 +41,6 @@ const forgetPasswordValidator = [
   validatorMiddleware,
 ];
 
-
 const changePasswordValidator = [
   check("password").notEmpty().withMessage("password is required"),
   validatorMiddleware,
@@ -51,5 +50,5 @@ module.exports = {
   registerValidator,
   loginValidator,
   forgetPasswordValidator,
-  changePasswordValidator
+  changePasswordValidator,
 };
