@@ -1,6 +1,6 @@
 const { check } = require("express-validator");
 const Book = require("../models/book.model");
-const ApiError = require("../utils/ApiError");
+const ApiError = require("../utils/api-error");
 const validatorMiddleware = require("../middlewares/validatorMiddleware");
 
 exports.addToCartValidator = [
@@ -12,7 +12,8 @@ exports.addToCartValidator = [
     .custom(async (id) => {
       const book = await Book.findById(id);
       if (!book) throw new ApiError("not found", 404);
-      if(book.reviewStatus != "approved")throw new ApiError("this book is not available", 400)
+      if (book.reviewStatus != "approved")
+        throw new ApiError("this book is not available", 400);
       return true;
     }),
   check("count")
@@ -25,16 +26,12 @@ exports.addToCartValidator = [
 ];
 
 exports.deleteCartValidator = [
-  check("cartId")
-    .isMongoId()
-    .withMessage("invalid cartId"),
+  check("cartId").isMongoId().withMessage("invalid cartId"),
   validatorMiddleware,
 ];
 
 exports.deleteBookFromCartValidator = [
-  check("cartId")
-    .isMongoId()
-    .withMessage("invalid cartId"),
+  check("cartId").isMongoId().withMessage("invalid cartId"),
   check("id")
     .notEmpty()
     .withMessage("book id is required")

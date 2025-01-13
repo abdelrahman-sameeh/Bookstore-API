@@ -2,13 +2,13 @@ const asyncHandler = require("../middlewares/asyncHandler");
 const Cart = require("../models/cart.model");
 const Coupon = require("../models/coupon.model");
 const { User } = require("../models/user.model");
-const ApiError = require("../utils/ApiError");
+const ApiError = require("../utils/api-error");
 const { createOrderAndUpdateCart } = require("./order.controllers");
 const Transfer = require("../models/transfer.model");
 const {
   calculateOwnerFee,
   calculateStripeFee,
-} = require("../utils/calculateFees");
+} = require("../utils/calculate-fees");
 const { sendEmail } = require("../utils/sendEmailSetup");
 const path = require("path");
 
@@ -138,7 +138,8 @@ const createCheckoutSession = asyncHandler(async (req, res, next) => {
       paymentType,
       paymentStatus: paymentType == "online" ? "paid" : "unpaid",
       finalPrice,
-      status: hasOfflineBook || paymentType == "offline" ? "inProgress" : "completed",
+      status:
+        hasOfflineBook || paymentType == "offline" ? "inProgress" : "completed",
     };
     if (coupon) {
       orderData.coupon = coupon._id;

@@ -1,8 +1,7 @@
 const asyncHandler = require("../middlewares/asyncHandler");
 const { User } = require("../models/user.model");
-const ApiError = require("../utils/ApiError");
+const ApiError = require("../utils/api-error");
 const { getBaseUrl } = require("../utils/getBaseUrl");
-
 
 const getLoggedUser = asyncHandler(async (req, res, next) => {
   const user = await User.findById(req.user._id);
@@ -23,7 +22,6 @@ const getLoggedUser = asyncHandler(async (req, res, next) => {
   });
 });
 
-
 const checkIsExistUser = asyncHandler(async (req, res, next) => {
   const user = await User.findById(req.params.id);
   if (!user) {
@@ -35,8 +33,8 @@ const checkIsExistUser = asyncHandler(async (req, res, next) => {
     name: user.name,
     picture: user.picture,
     email: user.email,
-    role: user.role
-  }
+    role: user.role,
+  };
 
   res.status(200).json({
     message: "success",
@@ -74,10 +72,7 @@ const updateUser = asyncHandler(async (req, res, next) => {
   };
 
   if (user.picture) {
-    const picturePath =
-      MODE === "dev"
-        ? user.picture
-        : user.picture;
+    const picturePath = MODE === "dev" ? user.picture : user.picture;
     payload.user.picture = picturePath;
   }
 

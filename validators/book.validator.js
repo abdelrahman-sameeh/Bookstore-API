@@ -1,7 +1,7 @@
 const { check } = require("express-validator");
 const validatorMiddleware = require("../middlewares/validatorMiddleware");
 const Category = require("../models/category.model");
-const ApiError = require("../utils/ApiError");
+const ApiError = require("../utils/api-error");
 const Book = require("../models/book.model");
 
 const createBookValidator = [
@@ -59,7 +59,7 @@ const updateBookValidator = [
     .withMessage("invalid book id")
     .custom(async (id, { req }) => {
       const book = await Book.findOne({ _id: id });
-      if(!book){
+      if (!book) {
         throw new ApiError("book not found");
       }
       if (book.owner.toString() != req.user._id.toString()) {
@@ -105,11 +105,11 @@ const deleteBookValidator = [
     .isMongoId()
     .withMessage("invalid book id")
     .custom(async (id, { req }) => {
-      const book = await Book.findById(id)
-      if(!book){
+      const book = await Book.findById(id);
+      if (!book) {
         throw new ApiError("book not found");
       }
-      if(req.user._id.toString() !== book.owner.toString()){
+      if (req.user._id.toString() !== book.owner.toString()) {
         throw new ApiError("You are not the owner of this book");
       }
       return true;
