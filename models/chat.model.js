@@ -8,13 +8,23 @@ const chatSchema = new mongoose.Schema(
         ref: "User",
       },
     ],
-    archived: {
-      type: Boolean,
-      default: false,
+    archivedBy: {
+      type: [
+        {
+          type: mongoose.Types.ObjectId,
+          ref: "User",
+        },
+      ],
+      default: [],
     },
-    blocker: {
-      type: mongoose.Types.ObjectId,
-      ref: "User",
+    blockedBy: {
+      type: [
+        {
+          type: mongoose.Types.ObjectId,
+          ref: "User",
+        },
+      ],
+      default: [],
     },
   },
   {

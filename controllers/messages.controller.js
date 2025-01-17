@@ -1,6 +1,7 @@
 const asyncHandler = require("../middlewares/asyncHandler");
 const { Chat } = require("../models/chat.model");
 const { Message } = require("../models/message.model");
+const { formatMessageDate } = require("../utils/format-date");
 
 const getChatMessage = asyncHandler(async (req, res, next) => {
   const { receiverId } = req.params;
@@ -10,7 +11,14 @@ const getChatMessage = asyncHandler(async (req, res, next) => {
     users: { $all: [receiverId, senderId] },
   });
 
-  const messages = await Message.find({ chat });
+  let messages = await Message.find({ chat }).lean();
+
+  messages = messages.map((message) => {
+    return {
+      ...message,
+      createdAtFormatted: formatMessageDate(message.createdAt),
+    };
+  });
 
   res.json({
     data: {
