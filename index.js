@@ -23,6 +23,7 @@ const webhookRoutes = require("./routes/webhook.routes");
 const deliveryRouter = require("./routes/delivery.routes");
 const usersRouter = require("./routes/users.routes");
 const messageRouter = require("./routes/message.routes");
+const chatRouter = require("./routes/chat.routes");
 
 const { retryFailedRefunds } = require("./controllers/payment.controllers");
 const cors = require("cors");
@@ -73,6 +74,7 @@ app.use("/api/v1", paymentRouter);
 app.use("/api/v1", deliveryRouter);
 app.use("/api/v1", usersRouter);
 app.use("/api/v1", messageRouter);
+app.use("/api/v1", chatRouter);
 
 app.all("*", (req, res) => {
   return res.status(404).json({ error: "not found this route" });
