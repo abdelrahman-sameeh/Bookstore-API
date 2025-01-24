@@ -102,6 +102,14 @@ server.listen(PORT, () => {
   console.log(`App listening on port ${PORT}`);
 });
 
+// process.on("uncaughtException", (err) => {
+//   console.error("Unhandled exception caught:", err);
+//   // يمكنك إنهاء التطبيق بأمان هنا إذا لزم الأمر
+//   // process.exit(1); // يمكنك اختيار 0 لإنهاء طبيعي أو 1 للإنهاء مع خطأ
+// });
+
+
+
 io.activeUsers = {};
 
 const registerEvent = require("./socketEvents/register.socket");

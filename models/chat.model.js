@@ -26,6 +26,17 @@ const chatSchema = new mongoose.Schema(
       ],
       default: [],
     },
+    chatType: {
+      type: String,
+      enum: [
+        "user-admin",
+        "user-delivery",
+        "user-owner",
+        "admin-delivery",
+        "admin-owner",
+      ],
+      required: true,
+    },
   },
   {
     timestamps: true,
