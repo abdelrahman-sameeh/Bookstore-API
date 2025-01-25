@@ -7,6 +7,7 @@ const mongoose = require("mongoose");
 const ApiError = require("../utils/api-error");
 const { User } = require("../models/user.model");
 const { userRoles, chatTypes } = require("../utils/types");
+const { getFrontendUrl } = require("../utils/get-frontend-url");
 
 async function findOrCreateRoom(user1Id, user2Id) {
   if (
@@ -36,7 +37,7 @@ async function findOrCreateRoom(user1Id, user2Id) {
   if (!validRoles.includes(user1Role) || !validRoles.includes(user2Role)) {
     return false;
   }
-  
+
   if (
     (user1Role === "user" && user2Role === "user") ||
     (user1Role === "owner" && user2Role === "delivery") ||
@@ -44,11 +45,11 @@ async function findOrCreateRoom(user1Id, user2Id) {
   ) {
     return false;
   }
-  
+
   room = new Chat({
     users: [user1Id, user2Id],
   });
-  
+
   const roleCombinationToChatType = {
     [`${userRoles.USER}-${userRoles.ADMIN}`]: chatTypes.USER_ADMIN,
     [`${userRoles.ADMIN}-${userRoles.USER}`]: chatTypes.USER_ADMIN,
@@ -61,15 +62,15 @@ async function findOrCreateRoom(user1Id, user2Id) {
     [`${userRoles.ADMIN}-${userRoles.OWNER}`]: chatTypes.ADMIN_OWNER,
     [`${userRoles.OWNER}-${userRoles.ADMIN}`]: chatTypes.ADMIN_OWNER,
   };
-  
+
   room.chatType = roleCombinationToChatType[`${user1Role}-${user2Role}`];
-  
+
   await room.save();
   return room;
 }
 
 // Helper function to process chat users picture
-const _processChatUsersPictures = (users=[]) => {
+const _processChatUsersPictures = (users = []) => {
   return users?.map((user) => {
     if (user.picture && !user.picture.startsWith("http://")) {
       user.picture = `${getBaseUrl()}/${user.picture}`;
@@ -227,10 +228,67 @@ const unarchiveChat = asyncHandler(async (req, res, next) => {
   res.status(200).json({ success: true, data: { chat } });
 });
 
+function getChatLink(id) {
+  if(!id)return false
+  return `${getFrontendUrl()}/chat/${id}`;
+}
+
+const getSupporter = asyncHandler(async (req, res, next) => {
+  const admins = await User.find({ role: "admin" }).select("_id");
+  if (!admins.length) {
+    return next(new ApiError("No supporters found"));
+  }
+
+  const adminChatCounts = new Map();
+
+  const adminsIds = admins.map((admin) => {
+    adminChatCounts.set(admin._id.toString(), 0);
+    return admin._id
+  })
+
+  const chats = await Chat.find({
+    users: { $in: adminsIds },
+  });
+
+  chats.forEach((chat) => {
+    chat.users.forEach((userId) => {
+      if (adminChatCounts.has(userId.toString())) {
+        adminChatCounts.set(
+          userId.toString(),
+          adminChatCounts.get(userId.toString()) + 1
+        );
+      }
+    });
+  });
+
+  let minChatCount = Infinity;
+  let leastActiveAdmin = null;
+
+  adminChatCounts.forEach((count, adminId) => {
+    if (count < minChatCount) {
+      minChatCount = count;
+      leastActiveAdmin = adminId;
+    }
+  });
+
+  const chatLink = getChatLink(leastActiveAdmin);
+  if (!chatLink) {
+    return next(new ApiError("Failed to generate chat link"));
+  }
+
+  return res.json({
+    data: {
+      message: "success",
+      link: chatLink,
+    },
+  });
+});
+
 module.exports = {
   findOrCreateRoom,
   getUserChats,
   getChat,
   archiveChat,
   unarchiveChat,
+  getSupporter,
 };
