@@ -18,9 +18,19 @@ async function findOrCreateRoom(user1Id, user2Id) {
   }
   let room = await Chat.findOne({
     users: { $all: [user1Id, user2Id] },
-  });
+  })
+    .populate({ path: "users", select: "name picture" })
+    .lean();
 
   if (room) {
+    const receiver = room.users.find((user) => user._id == user2Id);
+    room.chat = {
+      title: receiver.name,
+      _id: receiver?._id,
+    };
+    if (receiver.picture && !receiver.picture.startsWith("http://")) {
+      room.chat.picture = `${getBaseUrl()}/${receiver.picture}`;
+    }
     return room;
   }
 
@@ -229,7 +239,7 @@ const unarchiveChat = asyncHandler(async (req, res, next) => {
 });
 
 function getChatLink(id) {
-  if(!id)return false
+  if (!id) return false;
   return `${getFrontendUrl()}/chat/${id}`;
 }
 
@@ -243,8 +253,8 @@ const getSupporter = asyncHandler(async (req, res, next) => {
 
   const adminsIds = admins.map((admin) => {
     adminChatCounts.set(admin._id.toString(), 0);
-    return admin._id
-  })
+    return admin._id;
+  });
 
   const chats = await Chat.find({
     users: { $in: adminsIds },
