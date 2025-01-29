@@ -35,9 +35,6 @@ module.exports = (io, socket) => {
     ) {
       return false;
     }
-    if(room.blockedBy.length){
-      return false
-    }
 
     const chat = await getChat(message.sender, message.receiver)
     io.to(io.activeUsers[message.receiver]).emit("receivedMessage", chat);
